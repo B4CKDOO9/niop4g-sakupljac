@@ -11,5 +11,13 @@
   "license": "ISC",
   "devDependencies": {
     "electron": "^40.6.1"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/B4CKDOO9/niop4g-sakupljac.git"
+  },
+  "bugs": {
+    "url": "https://github.com/B4CKDOO9/niop4g-sakupljac/issues"
+  },
+  "homepage": "https://github.com/B4CKDOO9/niop4g-sakupljac#readme"
 }

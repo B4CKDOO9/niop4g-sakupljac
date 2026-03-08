@@ -3,7 +3,6 @@
 
 <head>
     <meta charset="UTF-8" />
-    <!-- https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP -->
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'" />
     <meta http-equiv="X-Content-Security-Policy" content="default-src 'self'; script-src 'self'" />
     <link rel="stylesheet" href="styles.css">
@@ -11,15 +10,89 @@
 </head>
 
 <body>
-    <button id="start-btn">Start Game</button>
-    <button id="reset-btn" style="display: none;">Reset Game</button>
-    <input type="text" id="player1-name" placeholder="Enter player 1 name" />
-    <input type="text" id="player2-name" placeholder="Enter player 2 name" />
-    <div id="game" style="display: none;">
-        <p id="status"></p>
-        <p id="score"></p>
-        <div id="grid"></div>
+    <!-- Izbornik -->
+    <div id="menu">
+        <div id="menu-content">
+            <h1>Sakupljač</h1>
+            <button id="new-game-btn">Nova Igra</button>
+            <button id="leaderboard-btn">Leaderboard</button>
+        </div>
     </div>
+
+    <!-- Dijalog za unos imena -->
+    <div id="name-dialog" class="dialog">
+        <div class="dialog-content">
+            <h2>Unesite Imena Igrača</h2>
+            <input type="text" id="player1-name" placeholder="Ime igrača 1" />
+            <input type="text" id="player2-name" placeholder="Ime igrača 2" />
+            <div class="dialog-buttons">
+                <button id="start-btn" class="dialog-btn">Započni Igru</button>
+                <button id="cancel-btn" class="dialog-btn secondary">Odustani</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Dijalog za kraj igre -->
+    <div id="game-over-dialog" class="dialog">
+        <div class="dialog-content">
+            <h2 id="game-over-title">Kraj Igre!</h2>
+            <p id="game-over-message"></p>
+            <div class="dialog-buttons">
+                <button id="new-game-after-btn" class="dialog-btn">Nova Igra</button>
+                <button id="menu-btn" class="dialog-btn secondary">Glavni Izbornik</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Dijalog za leaderboard -->
+    <div id="leaderboard-dialog" class="dialog">
+        <div class="dialog-content">
+            <h2>Leaderboard</h2>
+            <div id="leaderboard-list"></div>
+            <div class="dialog-buttons">
+                <button id="close-leaderboard-btn">Zatvori</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Dijalog za pravila -->
+    <div id="rules-dialog" class="dialog">
+        <div class="dialog-content">
+            <h2>Pravila</h2>
+            <p style="font-size: 18px; margin: 20px 0;">Priča je jednostavna, majmune.</p>
+            <div class="dialog-buttons">
+                <button id="close-rules-btn">Zatvori</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Područje igre -->
+    <div id="game-area" style="display: none;">
+        <div id="game-container">
+            <!-- Zaglavlje s imenima i rezultatima -->
+            <div id="game-header">
+                <div class="player-info player1-info">
+                    <div class="player-name" id="player1-display"></div>
+                    <div class="player-score" id="player1-score">0</div>
+                </div>
+                <div id="status"></div>
+                <div class="player-info player2-info">
+                    <div class="player-name" id="player2-display"></div>
+                    <div class="player-score" id="player2-score">0</div>
+                </div>
+            </div>
+            
+            <!-- Mreža igre -->
+            <div id="grid"></div>
+            
+            <!-- Gumbi -->
+            <div id="game-controls">
+                <button id="reset-btn" class="control-btn">Resetiraj Igru</button>
+                <button id="back-to-menu-btn" class="control-btn secondary">Glavni Izbornik</button>
+            </div>
+        </div>
+    </div>
+
     <script src="script.js"></script>
 </body>
 

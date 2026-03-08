@@ -1,7 +1,142 @@
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 20px;
+}
+
+/* Izbornik */
+#menu {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: white;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+#menu-content {
+    text-align: center;
+}
+
+#menu-content h1 {
+    margin-bottom: 20px;
+}
+
+button {
+    padding: 10px 20px;
+    margin: 5px;
+    cursor: pointer;
+}
+
+/* Dijalozi */
+.dialog {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    display: none;
+    justify-content: center;
+    align-items: center;
+}
+
+.dialog-content {
+    background: white;
+    padding: 20px;
+    border: 1px solid black;
+}
+
+.dialog-content input {
+    display: block;
+    width: 200px;
+    margin: 10px 0;
+    padding: 5px;
+}
+
+.dialog-buttons {
+    margin-top: 10px;
+}
+
+/* Igra */
+#game-area {
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+#game-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 20px;
+}
+
+.player-info {
+    text-align: center;
+}
+
+#status {
+    text-align: center;
+    font-weight: bold;
+    margin: 0 20px;
+}
+
+/* Grid - originalni dizajn */
 #grid {
     display: grid;
     width: 600px;
     height: 600px;
     grid-template-columns: repeat(6, 100px);
     background: black;
+    margin: 0 auto;
+}
+
+#grid > div {
+    width: 100px;
+    height: 100px;
+    outline: 1px solid black;
+    background-color: white;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+}
+
+#grid > div.eliminated {
+    background-color: gray;
+}
+
+/* Točkice - originalni dizajn */
+.dot {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+}
+
+#game-controls {
+    text-align: center;
+    margin-top: 20px;
+}
+
+/* Responzivnost */
+@media (max-width: 650px) {
+    #grid {
+        width: 100%;
+        height: auto;
+        aspect-ratio: 1;
+        grid-template-columns: repeat(6, 1fr);
+    }
+    
+    #grid > div {
+        width: 100%;
+        height: auto;
+        aspect-ratio: 1;
+    }
+    
+    #game-header {
+        flex-direction: column;
+        gap: 10px;
+    }
 }
