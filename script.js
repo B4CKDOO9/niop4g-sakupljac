@@ -250,6 +250,108 @@ function updateScore() {
     let p2 = getBiggestGroup(2);
     document.getElementById('player1-score').textContent = p1;
     document.getElementById('player2-score').textContent = p2;
+    drawConnections();
+}
+
+function drawConnections() {
+    const oldSvg = document.getElementById('connections-svg');
+    if (oldSvg) oldSvg.remove();
+
+    if (gameState.length === 0) return;
+
+    const grid = document.getElementById('grid');
+    const cellSize = grid.offsetWidth / 6;
+
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.id = 'connections-svg';
+    svg.setAttribute('width', grid.offsetWidth);
+    svg.setAttribute('height', grid.offsetHeight);
+    svg.style.position = 'absolute';
+    svg.style.top = '0';
+    svg.style.left = '0';
+    svg.style.pointerEvents = 'none';
+    svg.style.zIndex = '10';
+
+    const playerColors = { 1: '#dc3545', 2: '#007bff' };
+    const directions = [[0,1],[1,0],[1,1],[1,-1],[-1,1],[-1,0],[0,-1],[-1,-1]];
+
+    // Za svaki player, pronađi sve connected komponente i nacrtaj MST za svaku
+    for (const player of [1, 2]) {
+        // Skupi sve točke tog igrača
+        const nodes = [];
+        const nodeIndex = {};
+        for (let i = 0; i < 6; i++) {
+            for (let j = 0; j < 6; j++) {
+                if (gameState[i][j].player === player) {
+                    nodeIndex[i + ',' + j] = nodes.length;
+                    nodes.push([i, j]);
+                }
+            }
+        }
+        if (nodes.length === 0) continue;
+
+        // Pronađi sve susjedne parove (edges) - samo između susjednih ćelija
+        const edges = [];
+        for (let idx = 0; idx < nodes.length; idx++) {
+            const [i, j] = nodes[idx];
+            for (const [di, dj] of [[0,1],[1,0],[1,1],[1,-1]]) {
+                const ni = i + di, nj = j + dj;
+                if (ni < 0 || ni >= 6 || nj < 0 || nj >= 6) continue;
+                if (gameState[ni][nj].player !== player) continue;
+                const nidx = nodeIndex[ni + ',' + nj];
+                if (nidx === undefined) continue;
+                // Težina: broj susjednih veza svakog čvora (manje veza = prioritet)
+                const degI = countNeighbors(i, j, player);
+                const degN = countNeighbors(ni, nj, player);
+                const weight = degI + degN; // preferiramo čvorove s manje veza
+                edges.push([weight, idx, nidx, i, j, ni, nj]);
+            }
+        }
+
+        // Kruskalov algoritam za MST (sortiramo po težini ASC)
+        edges.sort((a, b) => a[0] - b[0]);
+
+        // Union-Find
+        const parent = nodes.map((_, i) => i);
+        function find(x) { return parent[x] === x ? x : (parent[x] = find(parent[x])); }
+        function union(x, y) {
+            const px = find(x), py = find(y);
+            if (px === py) return false;
+            parent[px] = py;
+            return true;
+        }
+
+        for (const [w, idx1, idx2, i, j, ni, nj] of edges) {
+            if (union(idx1, idx2)) {
+                const x1 = (j + 0.5) * cellSize;
+                const y1 = (i + 0.5) * cellSize;
+                const x2 = (nj + 0.5) * cellSize;
+                const y2 = (ni + 0.5) * cellSize;
+                const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                line.setAttribute('x1', x1);
+                line.setAttribute('y1', y1);
+                line.setAttribute('x2', x2);
+                line.setAttribute('y2', y2);
+                line.setAttribute('stroke', playerColors[player]);
+                line.setAttribute('stroke-width', '3');
+                line.setAttribute('stroke-linecap', 'round');
+                line.setAttribute('opacity', '0.6');
+                svg.appendChild(line);
+            }
+        }
+    }
+
+    grid.appendChild(svg);
+}
+
+function countNeighbors(row, col, player) {
+    const directions = [[0,1],[1,0],[1,1],[1,-1],[-1,1],[-1,0],[0,-1],[-1,-1]];
+    let count = 0;
+    for (const [di, dj] of directions) {
+        const ni = row + di, nj = col + dj;
+        if (ni >= 0 && ni < 6 && nj >= 0 && nj < 6 && gameState[ni][nj].player === player) count++;
+    }
+    return count;
 }
 
 function getBiggestGroup(player) {
