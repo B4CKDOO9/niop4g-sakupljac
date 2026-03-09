@@ -5,6 +5,7 @@ let player2Name = '';
 let phase = 'place';
 let lastPlaces = null;
 let gameState = [];
+let nameDialogFromMenu = true;
 
 // Elementi
 const menu = document.getElementById('menu');
@@ -21,9 +22,11 @@ if (typeof require !== 'undefined') {
         switch(action) {
             case 'new-game':
                 if (gameArea.style.display === 'block') {
+                    showNameDialog(false);
+                } else {
                     backToMenu();
+                    showNameDialog(true);
                 }
-                showNameDialog();
                 break;
             case 'reset-game':
                 if (gameArea.style.display === 'block') {
@@ -43,17 +46,24 @@ if (typeof require !== 'undefined') {
 // Gumbi
 document.getElementById('new-game-btn').addEventListener('click', showNameDialog);
 document.getElementById('leaderboard-btn').addEventListener('click', () => {
-    // TODO: Implementacija leaderboard-a s Google autentifikacijom
-    alert('Leaderboard će biti implementiran s Google autentifikacijom');
+    showInfo('Leaderboard će biti implementiran s Google autentifikacijom');
 });
 document.getElementById('start-btn').addEventListener('click', startNewGame);
 document.getElementById('cancel-btn').addEventListener('click', hideNameDialog);
+document.getElementById('confirm-reset-btn').addEventListener('click', () => {
+    document.getElementById('confirm-reset-dialog').style.display = 'none';
+    clearGame();
+    initializeGame();
+});
+document.getElementById('cancel-reset-btn').addEventListener('click', () => {
+    document.getElementById('confirm-reset-dialog').style.display = 'none';
+});
 document.getElementById('reset-btn').addEventListener('click', resetGame);
 document.getElementById('back-to-menu-btn').addEventListener('click', backToMenu);
 document.getElementById('close-rules-btn').addEventListener('click', hideRules);
 document.getElementById('new-game-after-btn').addEventListener('click', () => {
     hideGameOverDialog();
-    showNameDialog();
+    showNameDialog(false);
 });
 document.getElementById('menu-btn').addEventListener('click', () => {
     hideGameOverDialog();
@@ -67,17 +77,26 @@ document.getElementById('player2-name').addEventListener('keypress', (e) => {
     }
 });
 
-function showNameDialog() {
-    menu.style.display = 'none';
+function showNameDialog(fromMenu = true) {
+    nameDialogFromMenu = fromMenu;
+    if (fromMenu) {
+        menu.style.display = 'none';
+    } else {
+        gameArea.style.display = 'none';
+    }
     nameDialog.style.display = 'flex';
     document.getElementById('player1-name').value = player1Name || '';
     document.getElementById('player2-name').value = player2Name || '';
-    document.getElementById('player1-name').focus();
+    setTimeout(() => document.getElementById('player1-name').focus(), 100);
 }
 
 function hideNameDialog() {
     nameDialog.style.display = 'none';
-    menu.style.display = 'flex';
+    if (nameDialogFromMenu) {
+        menu.style.display = 'flex';
+    } else {
+        gameArea.style.display = 'block';
+    }
 }
 
 function showGameOverDialog(message) {
@@ -97,6 +116,16 @@ function hideRules() {
     rulesDialog.style.display = 'none';
 }
 
+document.getElementById('close-info-btn').addEventListener('click', () => {
+    document.getElementById('info-dialog').style.display = 'none';
+});
+
+function showInfo(message) {
+    document.getElementById('info-message').textContent = message;
+    document.getElementById('info-dialog').style.display = 'flex';
+}
+
+
 function backToMenu() {
     gameArea.style.display = 'none';
     menu.style.display = 'flex';
@@ -108,7 +137,7 @@ function startNewGame() {
     const p2Name = document.getElementById('player2-name').value.trim();
     
     if (!p1Name || !p2Name) {
-        alert('Molimo unesite oba imena igrača!');
+        showInfo('Molimo unesite oba imena igrača!');
         return;
     }
     
@@ -123,10 +152,7 @@ function startNewGame() {
 }
 
 function resetGame() {
-    if (confirm('Jeste li sigurni da želite resetirati igru?')) {
-        clearGame();
-        initializeGame();
-    }
+    document.getElementById('confirm-reset-dialog').style.display = 'flex';
 }
 
 function clearGame() {
@@ -184,14 +210,14 @@ function handleCellClick(cell) {
             lastPlaces = { row: row, col: col };
             updateStatus();
         } else {
-            alert('Nevaljano postavljanje! Morate postaviti pokraj postojeće pločice ili na prazno polje.');
+            showInfo('Nevaljano postavljanje! Morate postaviti pokraj postojeće pločice ili na prazno polje.');
         }
     } else if (phase === 'eliminate') {
         let rowDiff = Math.abs(row - lastPlaces.row);
         let colDiff = Math.abs(col - lastPlaces.col);
         
         if (rowDiff > 1 || colDiff > 1 || (rowDiff === 0 && colDiff === 0)) {
-            alert('Morate osjenčati susjednu ćeliju!');
+            showInfo('Morate osjenčati susjednu ćeliju!');
             return;
         }
         
