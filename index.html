@@ -25,6 +25,14 @@
             <h2>Unesite Imena Igrača</h2>
             <input type="text" id="player1-name" placeholder="Ime igrača 1" />
             <input type="text" id="player2-name" placeholder="Ime igrača 2" />
+            <label for="grid-size-select" style="margin-top:8px; display:block; font-size:14px;">Veličina polja:</label>
+            <select id="grid-size-select" style="width:214px; margin:5px 0 10px; padding:5px;">
+                <option value="4">4×4</option>
+                <option value="6" selected>6×6</option>
+                <option value="8">8×8</option>
+                <option value="10">10×10</option>
+                <option value="12">12×12</option>
+            </select>
             <div class="dialog-buttons">
                 <button id="start-btn" class="dialog-btn">Započni Igru</button>
                 <button id="cancel-btn" class="dialog-btn secondary">Odustani</button>

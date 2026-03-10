@@ -6,6 +6,7 @@ let phase = 'place';
 let lastPlaces = null;
 let gameState = [];
 let placementHistory = { 1: [], 2: [] };
+let gridSize = 6;
 
 // Elementi
 const menu = document.getElementById('menu');
@@ -115,6 +116,7 @@ function startNewGame() {
     
     player1Name = p1Name;
     player2Name = p2Name;
+    gridSize = parseInt(document.getElementById('grid-size-select').value);
     
     nameDialog.style.display = 'none';
     gameArea.style.display = 'block';
@@ -144,13 +146,25 @@ function initializeGame() {
     document.getElementById('player1-display').textContent = player1Name;
     document.getElementById('player2-display').textContent = player2Name;
     
+    // Postavi grid CSS
+    const cellPx = Math.floor(600 / gridSize);
+    gridContainer.style.width = (cellPx * gridSize) + 'px';
+    gridContainer.style.height = (cellPx * gridSize) + 'px';
+    gridContainer.style.gridTemplateColumns = `repeat(${gridSize}, ${cellPx}px)`;
+
+    // Postavi veličinu točkice
+    const dotPx = Math.max(10, Math.floor(cellPx * 0.3));
+    document.documentElement.style.setProperty('--dot-size', dotPx + 'px');
+
     // Stvori mrežu
-    for (let i = 0; i < 6; i++) {
+    for (let i = 0; i < gridSize; i++) {
         let row = [];
-        for (let j = 0; j < 6; j++) {
+        for (let j = 0; j < gridSize; j++) {
             let cell = document.createElement('div');
             cell.dataset.row = i;
             cell.dataset.col = j;
+            cell.style.width = cellPx + 'px';
+            cell.style.height = cellPx + 'px';
             gridContainer.appendChild(cell);
             row.push({ player: null, eliminated: false });
             
@@ -236,11 +250,12 @@ function drawConnections() {
     if (gameState.length === 0) return;
 
     const grid = document.getElementById('grid');
-    const cellSize = grid.offsetWidth / 6;
+    const cellSize = Math.floor(600 / gridSize);
+    const totalSize = cellSize * gridSize;
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     svg.id = 'connections-svg';
-    svg.setAttribute('width', grid.offsetWidth);
-    svg.setAttribute('height', grid.offsetHeight);
+    svg.setAttribute('width', totalSize);
+    svg.setAttribute('height', totalSize);
     svg.style.position = 'absolute';
     svg.style.top = '0';
     svg.style.left = '0';
@@ -338,17 +353,17 @@ function drawConnections() {
 
 function getBiggestGroup(player) {
     let visited = [];
-    for (let i = 0; i < 6; i++) {
+    for (let i = 0; i < gridSize; i++) {
         let row = [];
-        for (let j = 0; j < 6; j++) {
+        for (let j = 0; j < gridSize; j++) {
             row.push(false);
         }
         visited.push(row);
     }
     
     let biggest = 0;
-    for (let i = 0; i < 6; i++) {
-        for (let j = 0; j < 6; j++) {
+    for (let i = 0; i < gridSize; i++) {
+        for (let j = 0; j < gridSize; j++) {
             if (gameState[i][j].player === player && !visited[i][j]) {
                 let groupSize = dfs(i, j, player, visited);
                 if (groupSize > biggest) {
@@ -361,7 +376,7 @@ function getBiggestGroup(player) {
 }
 
 function dfs(row, col, player, visited) {
-    if (row < 0 || row >= 6 || col < 0 || col >= 6) return 0;
+    if (row < 0 || row >= gridSize || col < 0 || col >= gridSize) return 0;
     if (visited[row][col]) return 0;
     if (gameState[row][col].player !== player) return 0;
     
@@ -383,8 +398,8 @@ function dfs(row, col, player, visited) {
 
 function checkGameOver() {
     // Provjeri ima li još validnih poteza
-    for (let i = 0; i < 6; i++) {
-        for (let j = 0; j < 6; j++) {
+    for (let i = 0; i < gridSize; i++) {
+        for (let j = 0; j < gridSize; j++) {
             if (gameState[i][j].player === null && !gameState[i][j].eliminated && adjacentCells(i, j)) {
                 return false;
             }
@@ -424,7 +439,7 @@ function adjacentCells(row, col) {
             let newRow = parseInt(row) + i;
             let newCol = parseInt(col) + j;
             
-            if (newRow >= 0 && newRow < 6 && newCol >= 0 && newCol < 6) {
+            if (newRow >= 0 && newRow < gridSize && newCol >= 0 && newCol < gridSize) {
                 if (gameState[newRow][newCol].player === null && !gameState[newRow][newCol].eliminated) {
                     return true;
                 }
