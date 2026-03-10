@@ -5,7 +5,7 @@ let player2Name = '';
 let phase = 'place';
 let lastPlaces = null;
 let gameState = [];
-let nameDialogFromMenu = true;
+let placementHistory = { 1: [], 2: [] };
 
 // Elementi
 const menu = document.getElementById('menu');
@@ -22,11 +22,9 @@ if (typeof require !== 'undefined') {
         switch(action) {
             case 'new-game':
                 if (gameArea.style.display === 'block') {
-                    showNameDialog(false);
-                } else {
                     backToMenu();
-                    showNameDialog(true);
                 }
+                showNameDialog();
                 break;
             case 'reset-game':
                 if (gameArea.style.display === 'block') {
@@ -46,24 +44,17 @@ if (typeof require !== 'undefined') {
 // Gumbi
 document.getElementById('new-game-btn').addEventListener('click', showNameDialog);
 document.getElementById('leaderboard-btn').addEventListener('click', () => {
-    showInfo('Leaderboard će biti implementiran s Google autentifikacijom');
+    // TODO: Implementacija leaderboard-a s Google autentifikacijom
+    alert('Leaderboard će biti implementiran s Google autentifikacijom');
 });
 document.getElementById('start-btn').addEventListener('click', startNewGame);
 document.getElementById('cancel-btn').addEventListener('click', hideNameDialog);
-document.getElementById('confirm-reset-btn').addEventListener('click', () => {
-    document.getElementById('confirm-reset-dialog').style.display = 'none';
-    clearGame();
-    initializeGame();
-});
-document.getElementById('cancel-reset-btn').addEventListener('click', () => {
-    document.getElementById('confirm-reset-dialog').style.display = 'none';
-});
 document.getElementById('reset-btn').addEventListener('click', resetGame);
 document.getElementById('back-to-menu-btn').addEventListener('click', backToMenu);
 document.getElementById('close-rules-btn').addEventListener('click', hideRules);
 document.getElementById('new-game-after-btn').addEventListener('click', () => {
     hideGameOverDialog();
-    showNameDialog(false);
+    showNameDialog();
 });
 document.getElementById('menu-btn').addEventListener('click', () => {
     hideGameOverDialog();
@@ -77,26 +68,17 @@ document.getElementById('player2-name').addEventListener('keypress', (e) => {
     }
 });
 
-function showNameDialog(fromMenu = true) {
-    nameDialogFromMenu = fromMenu;
-    if (fromMenu) {
-        menu.style.display = 'none';
-    } else {
-        gameArea.style.display = 'none';
-    }
+function showNameDialog() {
+    menu.style.display = 'none';
     nameDialog.style.display = 'flex';
     document.getElementById('player1-name').value = player1Name || '';
     document.getElementById('player2-name').value = player2Name || '';
-    setTimeout(() => document.getElementById('player1-name').focus(), 100);
+    document.getElementById('player1-name').focus();
 }
 
 function hideNameDialog() {
     nameDialog.style.display = 'none';
-    if (nameDialogFromMenu) {
-        menu.style.display = 'flex';
-    } else {
-        gameArea.style.display = 'block';
-    }
+    menu.style.display = 'flex';
 }
 
 function showGameOverDialog(message) {
@@ -116,16 +98,6 @@ function hideRules() {
     rulesDialog.style.display = 'none';
 }
 
-document.getElementById('close-info-btn').addEventListener('click', () => {
-    document.getElementById('info-dialog').style.display = 'none';
-});
-
-function showInfo(message) {
-    document.getElementById('info-message').textContent = message;
-    document.getElementById('info-dialog').style.display = 'flex';
-}
-
-
 function backToMenu() {
     gameArea.style.display = 'none';
     menu.style.display = 'flex';
@@ -137,7 +109,7 @@ function startNewGame() {
     const p2Name = document.getElementById('player2-name').value.trim();
     
     if (!p1Name || !p2Name) {
-        showInfo('Molimo unesite oba imena igrača!');
+        alert('Molimo unesite oba imena igrača!');
         return;
     }
     
@@ -152,7 +124,10 @@ function startNewGame() {
 }
 
 function resetGame() {
-    document.getElementById('confirm-reset-dialog').style.display = 'flex';
+    if (confirm('Jeste li sigurni da želite resetirati igru?')) {
+        clearGame();
+        initializeGame();
+    }
 }
 
 function clearGame() {
@@ -161,6 +136,7 @@ function clearGame() {
     currentPlayer = 1;
     phase = 'place';
     lastPlaces = null;
+    placementHistory = { 1: [], 2: [] };
 }
 
 function initializeGame() {
@@ -200,6 +176,7 @@ function handleCellClick(cell) {
     if (phase === 'place') {
         if (adjacentCells(row, col)) {
             gameState[row][col].player = currentPlayer;
+            placementHistory[currentPlayer].push([row, col]);
             
             let dot = document.createElement('div');
             dot.className = 'dot';
@@ -210,14 +187,14 @@ function handleCellClick(cell) {
             lastPlaces = { row: row, col: col };
             updateStatus();
         } else {
-            showInfo('Nevaljano postavljanje! Morate postaviti pokraj postojeće pločice ili na prazno polje.');
+            alert('Nevaljano postavljanje! Morate postaviti pokraj postojeće pločice ili na prazno polje.');
         }
     } else if (phase === 'eliminate') {
         let rowDiff = Math.abs(row - lastPlaces.row);
         let colDiff = Math.abs(col - lastPlaces.col);
         
         if (rowDiff > 1 || colDiff > 1 || (rowDiff === 0 && colDiff === 0)) {
-            showInfo('Morate osjenčati susjednu ćeliju!');
+            alert('Morate osjenčati susjednu ćeliju!');
             return;
         }
         
@@ -256,12 +233,10 @@ function updateScore() {
 function drawConnections() {
     const oldSvg = document.getElementById('connections-svg');
     if (oldSvg) oldSvg.remove();
-
     if (gameState.length === 0) return;
 
     const grid = document.getElementById('grid');
     const cellSize = grid.offsetWidth / 6;
-
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     svg.id = 'connections-svg';
     svg.setAttribute('width', grid.offsetWidth);
@@ -273,85 +248,92 @@ function drawConnections() {
     svg.style.zIndex = '10';
 
     const playerColors = { 1: '#dc3545', 2: '#007bff' };
-    const directions = [[0,1],[1,0],[1,1],[1,-1],[-1,1],[-1,0],[0,-1],[-1,-1]];
 
-    // Za svaki player, pronađi sve connected komponente i nacrtaj MST za svaku
+    function drawLine(r1, c1, r2, c2, color) {
+        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        line.setAttribute('x1', (c1+0.5)*cellSize); line.setAttribute('y1', (r1+0.5)*cellSize);
+        line.setAttribute('x2', (c2+0.5)*cellSize); line.setAttribute('y2', (r2+0.5)*cellSize);
+        line.setAttribute('stroke', color);
+        line.setAttribute('stroke-width', '3');
+        line.setAttribute('stroke-linecap', 'round');
+        line.setAttribute('opacity', '0.6');
+        svg.appendChild(line);
+    }
+
+    function isOrtho(r1,c1,r2,c2) { return (Math.abs(r1-r2)===1&&c1===c2)||(r1===r2&&Math.abs(c1-c2)===1); }
+    function isDiag(r1,c1,r2,c2)  { return Math.abs(r1-r2)===1&&Math.abs(c1-c2)===1; }
+
     for (const player of [1, 2]) {
-        // Skupi sve točke tog igrača
-        const nodes = [];
-        const nodeIndex = {};
-        for (let i = 0; i < 6; i++) {
-            for (let j = 0; j < 6; j++) {
-                if (gameState[i][j].player === player) {
-                    nodeIndex[i + ',' + j] = nodes.length;
-                    nodes.push([i, j]);
+        const history = placementHistory[player];
+        if (history.length < 2) continue;
+        const color = playerColors[player];
+        const n = history.length;
+
+        // Union-Find
+        const uf = Array.from({length: n}, (_, i) => i);
+        function find(x) { return uf[x]===x ? x : (uf[x]=find(uf[x])); }
+        function union(a, b) { const pa=find(a),pb=find(b); if(pa===pb)return false; uf[pa]=pb; return true; }
+
+        // Linije koje ćemo nacrtati: [i, j] parovi
+        const lines = [];
+
+        // Prolaz 1 i 2: za svaku točku, nađi najnovijeg susjednog u historiji (ortho prioritet)
+        for (let i = 1; i < n; i++) {
+            const [ri, ci] = history[i];
+            let found = false;
+            // ortho
+            for (let j = i-1; j >= 0; j--) {
+                const [rj,cj] = history[j];
+                if (isOrtho(ri,ci,rj,cj)) { union(i,j); lines.push([i,j]); found=true; break; }
+            }
+            if (!found) {
+                // diag
+                for (let j = i-1; j >= 0; j--) {
+                    const [rj,cj] = history[j];
+                    if (isDiag(ri,ci,rj,cj)) { union(i,j); lines.push([i,j]); found=true; break; }
                 }
             }
         }
-        if (nodes.length === 0) continue;
 
-        // Pronađi sve susjedne parove (edges) - samo između susjednih ćelija
-        const edges = [];
-        for (let idx = 0; idx < nodes.length; idx++) {
-            const [i, j] = nodes[idx];
-            for (const [di, dj] of [[0,1],[1,0],[1,1],[1,-1]]) {
-                const ni = i + di, nj = j + dj;
-                if (ni < 0 || ni >= 6 || nj < 0 || nj >= 6) continue;
-                if (gameState[ni][nj].player !== player) continue;
-                const nidx = nodeIndex[ni + ',' + nj];
-                if (nidx === undefined) continue;
-                // Težina: broj susjednih veza svakog čvora (manje veza = prioritet)
-                const degI = countNeighbors(i, j, player);
-                const degN = countNeighbors(ni, nj, player);
-                const weight = degI + degN; // preferiramo čvorove s manje veza
-                edges.push([weight, idx, nidx, i, j, ni, nj]);
+        // Prolaz 3: spoji sve odvojene komponente koje imaju susjedne točke
+        // Ponavljaj dok ima novih spajanja
+        let changed = true;
+        while (changed) {
+            changed = false;
+            // Ortho prvo
+            for (let i = 0; i < n; i++) {
+                for (let j = 0; j < n; j++) {
+                    if (i===j || find(i)===find(j)) continue;
+                    const [ri,ci]=history[i], [rj,cj]=history[j];
+                    if (isOrtho(ri,ci,rj,cj)) {
+                        union(i,j); lines.push([i,j]); changed=true;
+                    }
+                }
+            }
+            // Diag samo ako još ima odvojenih
+            for (let i = 0; i < n; i++) {
+                for (let j = 0; j < n; j++) {
+                    if (i===j || find(i)===find(j)) continue;
+                    const [ri,ci]=history[i], [rj,cj]=history[j];
+                    if (isDiag(ri,ci,rj,cj)) {
+                        union(i,j); lines.push([i,j]); changed=true;
+                    }
+                }
             }
         }
 
-        // Kruskalov algoritam za MST (sortiramo po težini ASC)
-        edges.sort((a, b) => a[0] - b[0]);
-
-        // Union-Find
-        const parent = nodes.map((_, i) => i);
-        function find(x) { return parent[x] === x ? x : (parent[x] = find(parent[x])); }
-        function union(x, y) {
-            const px = find(x), py = find(y);
-            if (px === py) return false;
-            parent[px] = py;
-            return true;
-        }
-
-        for (const [w, idx1, idx2, i, j, ni, nj] of edges) {
-            if (union(idx1, idx2)) {
-                const x1 = (j + 0.5) * cellSize;
-                const y1 = (i + 0.5) * cellSize;
-                const x2 = (nj + 0.5) * cellSize;
-                const y2 = (ni + 0.5) * cellSize;
-                const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-                line.setAttribute('x1', x1);
-                line.setAttribute('y1', y1);
-                line.setAttribute('x2', x2);
-                line.setAttribute('y2', y2);
-                line.setAttribute('stroke', playerColors[player]);
-                line.setAttribute('stroke-width', '3');
-                line.setAttribute('stroke-linecap', 'round');
-                line.setAttribute('opacity', '0.6');
-                svg.appendChild(line);
-            }
+        // Dedupliraj linije (može biti duplikata) i nacrtaj
+        const drawn = new Set();
+        for (const [i, j] of lines) {
+            const key = Math.min(i,j)+','+Math.max(i,j);
+            if (drawn.has(key)) continue;
+            drawn.add(key);
+            const [ri,ci]=history[i], [rj,cj]=history[j];
+            drawLine(ri,ci,rj,cj,color);
         }
     }
 
     grid.appendChild(svg);
-}
-
-function countNeighbors(row, col, player) {
-    const directions = [[0,1],[1,0],[1,1],[1,-1],[-1,1],[-1,0],[0,-1],[-1,-1]];
-    let count = 0;
-    for (const [di, dj] of directions) {
-        const ni = row + di, nj = col + dj;
-        if (ni >= 0 && ni < 6 && nj >= 0 && nj < 6 && gameState[ni][nj].player === player) count++;
-    }
-    return count;
 }
 
 function getBiggestGroup(player) {
