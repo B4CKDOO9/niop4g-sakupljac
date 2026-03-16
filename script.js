@@ -36,7 +36,7 @@ if (typeof require !== "undefined") {
         showNameDialog();
         break;
       case "reset-game":
-        if (gameArea.style.display === "block") {
+        if (gameArea.style.display === "block" && !onlineMode) {
           resetGame();
         }
         break;
