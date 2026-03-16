@@ -3,8 +3,8 @@
 
 <head>
     <meta charset="UTF-8" />
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'" />
-    <meta http-equiv="X-Content-Security-Policy" content="default-src 'self'; script-src 'self'" />
+    <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; script-src 'self' https://www.gstatic.com; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://securetoken.googleapis.com https://identitytoolkit.googleapis.com wss://*.firebaseio.com; frame-src https://accounts.google.com;" />
     <link rel="stylesheet" href="styles.css">
     <title>Sakupljač</title>
 </head>
@@ -15,11 +15,64 @@
         <div id="menu-content">
             <h1>Sakupljač</h1>
             <button id="new-game-btn">Nova Igra</button>
+            <button id="online-game-btn">Online Igra</button>
             <button id="leaderboard-btn">Leaderboard</button>
         </div>
     </div>
 
-    <!-- Dijalog za unos imena -->
+    <!-- Ekran za prijavu (online mod) -->
+    <div id="auth-screen" style="display:none;">
+        <div id="auth-content">
+            <h1>Sakupljač — Online</h1>
+            <p id="auth-status">Prijavite se za online igru.</p>
+            <button id="sign-in-btn">Prijavi se s Google računom</button>
+            <button id="auth-cancel-btn">Odustani</button>
+        </div>
+    </div>
+
+    <!-- Online lobby -->
+    <div id="online-lobby" style="display:none;">
+        <div id="online-lobby-content">
+            <div id="user-bar">
+                <span id="user-display-name"></span>
+                <button id="sign-out-btn">Odjavi se</button>
+            </div>
+            <h1>Sakupljač — Online</h1>
+            <button id="create-game-btn">Nova Igra</button>
+            <button id="join-game-btn">Pridruži se</button>
+            <button id="online-leaderboard-btn">Leaderboard</button>
+            <button id="online-back-btn">Natrag</button>
+
+            <div id="create-game-options" style="display:none; margin-top:12px;">
+                <label for="lobby-grid-size" style="display:block; margin-bottom:5px;">Veličina polja:</label>
+                <select id="lobby-grid-size" style="width:150px; margin-bottom:10px; padding:5px;">
+                    <option value="4">4×4</option>
+                    <option value="6" selected>6×6</option>
+                    <option value="8">8×8</option>
+                    <option value="10">10×10</option>
+                    <option value="12">12×12</option>
+                </select>
+                <br>
+                <button id="confirm-create-btn">Stvori sobu</button>
+                <button id="cancel-create-btn">Odustani</button>
+            </div>
+
+            <div id="waiting-room" style="display:none; margin-top:12px;">
+                <p>Čekanje protivnika... Kod sobe:</p>
+                <h2 id="room-code-display" style="letter-spacing:4px; font-size:2em;"></h2>
+                <button id="cancel-wait-btn">Odustani</button>
+            </div>
+
+            <div id="join-room-form" style="display:none; margin-top:12px;">
+                <input type="text" id="room-code-input" placeholder="Kod sobe" maxlength="6"
+                    style="text-transform:uppercase; width:150px; padding:5px; display:block; margin-bottom:8px;" />
+                <button id="confirm-join-btn">Pridruži se</button>
+                <button id="cancel-join-btn">Odustani</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Dijalog za unos imena (lokalni mod) -->
     <div id="name-dialog" class="dialog">
         <div class="dialog-content">
             <h2>Unesite Imena Igrača</h2>
@@ -111,10 +164,10 @@
                     <div class="player-score" id="player2-score">0</div>
                 </div>
             </div>
-            
+
             <!-- Mreža igre -->
             <div id="grid"></div>
-            
+
             <!-- Gumbi -->
             <div id="game-controls">
                 <button id="reset-btn" class="control-btn">Resetiraj Igru</button>
@@ -124,6 +177,7 @@
     </div>
 
     <script src="script.js"></script>
+    <script type="module" src="online.js"></script>
 </body>
 
 </html>

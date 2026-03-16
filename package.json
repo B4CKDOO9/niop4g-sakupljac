@@ -10,7 +10,7 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
-    "electron": "^40.8.0"
+    "electron": "^41.0.2"
   },
   "repository": {
     "type": "git",
@@ -19,5 +19,8 @@
   "bugs": {
     "url": "https://github.com/B4CKDOO9/niop4g-sakupljac/issues"
   },
-  "homepage": "https://github.com/B4CKDOO9/niop4g-sakupljac#readme"
+  "homepage": "https://github.com/B4CKDOO9/niop4g-sakupljac#readme",
+  "dependencies": {
+    "firebase": "^12.10.0"
+  }
 }
