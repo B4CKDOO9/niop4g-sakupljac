@@ -108,12 +108,14 @@ function showOnlineLobby(user) {
   document.getElementById('join-room-form').style.display      = 'none';
 }
 
-function backToLobby() {
+async function backToLobby() {
   // Notify the other player by marking the game as 'left' and recording who left
   if (currentGameId && localGameData && (localGameData.status === 'active' || localGameData.status === 'finished')) {
     const update = { status: 'left' };
     if (localGameData.status === 'active' && auth.currentUser) {
       update.leftBy = auth.currentUser.uid;
+      // Penalize own ELO before notifying the other player
+      await selfPenalizeLeaver(localGameData);
     }
     updateDoc(doc(db, 'games', currentGameId), update).catch(() => {});
   }
@@ -414,8 +416,8 @@ function renderGameState(data) {
   // Other player left — penalize leaver's ELO if game was active, then go to lobby
   if (data.status === 'left') {
     if (data.leftBy && data.leftBy !== auth.currentUser?.uid) {
-      // The OTHER player abandoned — we handle the ELO penalty for them
-      handleAbandon(data).finally(() => backToLobby());
+      // The OTHER player abandoned — increment our games count, then go to lobby
+      handleAbandon().finally(() => backToLobby());
     } else {
       backToLobby();
     }
@@ -572,42 +574,61 @@ async function updateOwnProfile(data) {
   }
 }
 
-// ── Abandon — penalize leaver, other player keeps their ELO ──────────────────
-async function handleAbandon(data) {
-  const leaverUid  = data.leftBy;
-  const leaverIsP1 = leaverUid === data.player1uid;
-  const leaverRef  = doc(db, 'players', leaverUid);
-  const stayerRef  = doc(db, 'players', leaverIsP1 ? data.player2uid : data.player1uid);
+// ── Abandon — leaver penalizes themselves, stayer keeps ELO ──────────────────
+
+// Called by the LEAVER (in backToLobby) to deduct their own ELO before leaving.
+// Each player can only write to their own /players/{uid} doc (Firestore rules).
+async function selfPenalizeLeaver(data) {
+  const myUid = auth.currentUser?.uid;
+  if (!myUid) return;
+
+  const opponentUid = myUid === data.player1uid ? data.player2uid : data.player1uid;
 
   try {
-    const [leaverSnap, stayerSnap] = await Promise.all([getDoc(leaverRef), getDoc(stayerRef)]);
-    const leaver = leaverSnap.data();
-    const stayer = stayerSnap.data();
-    if (!leaver || !stayer) return;
+    const [mySnap, oppSnap] = await Promise.all([
+      getDoc(doc(db, 'players', myUid)),
+      getDoc(doc(db, 'players', opponentUid))
+    ]);
+    const me  = mySnap.data();
+    const opp = oppSnap.data();
+    if (!me || !opp) return;
 
-    const leaverRating = safeNum(leaver.rating, 1200);
-    const stayerRating = safeNum(stayer.rating, 1200);
+    const myRating  = safeNum(me.rating, 1200);
+    const oppRating = safeNum(opp.rating, 1200);
 
-    // Leaver is treated as having lost (score = 0)
-    const expected = window.getExpectedScore(leaverRating, stayerRating);
-    const delta    = Math.round(ELO_K_FACTOR * (0 - expected));
-    const newRating = Math.max(100, leaverRating + delta);
+    const expected  = window.getExpectedScore(myRating, oppRating);
+    const delta     = Math.round(ELO_K_FACTOR * (0 - expected));
+    const newRating = Math.max(100, myRating + delta);
 
-    // Only deduct from leaver — stayer keeps their rating
-    await updateDoc(leaverRef, {
+    await updateDoc(doc(db, 'players', myUid), {
       rating: newRating,
-      games:  leaver.games + 1,
-      losses: leaver.losses + 1,
-      updatedAt: serverTimestamp()
-    });
-
-    // Increment stayer's games count (no rating change, counts as no-contest)
-    await updateDoc(stayerRef, {
-      games: stayer.games + 1,
+      games:  me.games + 1,
+      losses: me.losses + 1,
       updatedAt: serverTimestamp()
     });
   } catch (err) {
-    console.error('Abandon ELO update error:', err);
+    console.error('Self-penalize leaver error:', err);
+  }
+}
+
+// Called by the STAYER when they detect the other player left.
+// Only updates the stayer's own doc — no rating change, just increment games.
+async function handleAbandon() {
+  const myUid = auth.currentUser?.uid;
+  if (!myUid) return;
+
+  try {
+    const myRef = doc(db, 'players', myUid);
+    const snap  = await getDoc(myRef);
+    const me    = snap.data();
+    if (!me) return;
+
+    await updateDoc(myRef, {
+      games: me.games + 1,
+      updatedAt: serverTimestamp()
+    });
+  } catch (err) {
+    console.error('Abandon stayer update error:', err);
   }
 }
 
