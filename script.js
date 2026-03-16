@@ -15,6 +15,14 @@ const ELO_K_FACTOR = 32;
 // Online multiplayer hook — set to true by online.js when an online game is active
 var onlineMode = false;
 
+// Local timer state
+var localTimerEnabled = false;
+var localTimer = null;
+var localTimerSeconds = 30;
+var localConsecutiveTimeouts = { 1: 0, 2: 0 };
+const LOCAL_TURN_TIME = 30;
+const LOCAL_MAX_TIMEOUTS = 3;
+
 // Elementi
 const menu = document.getElementById("menu");
 const nameDialog = document.getElementById("name-dialog");
@@ -161,6 +169,7 @@ function startNewGame() {
   player1Name = p1Name;
   player2Name = p2Name;
   gridSize = parseInt(document.getElementById("grid-size-select").value);
+  localTimerEnabled = document.getElementById("timer-checkbox").checked;
 
   ensurePlayerProfile(player1Name);
   ensurePlayerProfile(player2Name);
@@ -180,12 +189,14 @@ function resetGame() {
 }
 
 function clearGame() {
+  clearLocalTimer();
   gridContainer.innerHTML = "";
   gameState = [];
   currentPlayer = 1;
   phase = "place";
   lastPlaces = null;
   placementHistory = { 1: [], 2: [] };
+  localConsecutiveTimeouts = { 1: 0, 2: 0 };
 }
 
 function initializeGame() {
@@ -222,6 +233,81 @@ function initializeGame() {
 
   updateStatus();
   updateScore();
+  startLocalTimer();
+}
+
+// ── Local turn timer ─────────────────────────────────────────────────────────
+function startLocalTimer() {
+  clearLocalTimer();
+  if (!localTimerEnabled || onlineMode) return;
+
+  const timerEl = document.getElementById("turn-timer");
+  localTimerSeconds = LOCAL_TURN_TIME;
+  timerEl.textContent = localTimerSeconds;
+  timerEl.style.display = "block";
+  timerEl.style.color = "#333";
+
+  localTimer = setInterval(() => {
+    localTimerSeconds--;
+    timerEl.textContent = localTimerSeconds;
+    if (localTimerSeconds <= 10) timerEl.style.color = "#dc3545";
+    if (localTimerSeconds <= 0) {
+      clearInterval(localTimer);
+      localTimer = null;
+      onLocalTimeout();
+    }
+  }, 1000);
+}
+
+function clearLocalTimer() {
+  if (localTimer) { clearInterval(localTimer); localTimer = null; }
+  document.getElementById("turn-timer").style.display = "none";
+}
+
+function onLocalTimeout() {
+  const isFullSkip = phase === "place";
+
+  if (isFullSkip) {
+    localConsecutiveTimeouts[currentPlayer]++;
+    if (localConsecutiveTimeouts[currentPlayer] >= LOCAL_MAX_TIMEOUTS) {
+      handleTimeoutLoss(currentPlayer);
+      return;
+    }
+  }
+
+  // Skip turn — pass to next player
+  currentPlayer = currentPlayer === 1 ? 2 : 1;
+  phase = "place";
+  lastPlaces = null;
+  updateStatus();
+  updateScore();
+
+  if (!checkGameOver()) {
+    startLocalTimer();
+  }
+}
+
+function handleTimeoutLoss(losingPlayer) {
+  clearLocalTimer();
+
+  const winner = losingPlayer === 1 ? 2 : 1;
+  const scoreP1 = losingPlayer === 1 ? 0 : 1;
+  const ratingUpdate = updateRatingsAfterGame(player1Name, player2Name, scoreP1);
+  updatePlayerDisplays();
+
+  const winnerName = winner === 1 ? player1Name : player2Name;
+  const loserName = losingPlayer === 1 ? player1Name : player2Name;
+
+  let message = `${loserName} je izgubio zbog neaktivnosti (3 propuštena poteza)!\n`;
+  message += `${winnerName} pobjeđuje!\n`;
+  message += `Rejting: ${player1Name} ${formatRatingDelta(ratingUpdate.delta1)} (${ratingUpdate.rating1}), ${player2Name} ${formatRatingDelta(ratingUpdate.delta2)} (${ratingUpdate.rating2}).`;
+
+  document.getElementById("status").textContent = `Pobjednik: ${winnerName}!`;
+  document.getElementById("status").style.color = winner === 1 ? "#dc3545" : "#007bff";
+
+  setTimeout(() => {
+    showGameOverDialog(message);
+  }, 1000);
 }
 
 function handleCellClick(cell) {
@@ -249,7 +335,9 @@ function handleCellClick(cell) {
 
       phase = "eliminate";
       lastPlaces = { row: row, col: col };
+      localConsecutiveTimeouts[currentPlayer] = 0;
       updateStatus();
+      startLocalTimer();
     } else {
       alert(
         "Nevaljano postavljanje! Morate postaviti pokraj postojeće točke ili na prazno polje.",
@@ -271,7 +359,9 @@ function handleCellClick(cell) {
     currentPlayer = currentPlayer === 1 ? 2 : 1;
     updateStatus();
     updateScore();
-    checkGameOver();
+    if (!checkGameOver()) {
+      startLocalTimer();
+    }
   }
 }
 
@@ -499,6 +589,7 @@ function checkGameOver() {
   }
 
   // Igra je gotova
+  clearLocalTimer();
   let p1 = getBiggestGroup(1);
   let p2 = getBiggestGroup(2);
   const scoreP1 = p1 === p2 ? 0.5 : p1 > p2 ? 1 : 0;
@@ -529,6 +620,8 @@ function checkGameOver() {
   setTimeout(() => {
     showGameOverDialog(message);
   }, 1000);
+
+  return true;
 }
 
 function adjacentCells(row, col) {
