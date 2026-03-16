@@ -281,18 +281,6 @@ async function startOnlineGame(data) {
   window.player2Name = data.player2name;
   window.gridSize    = data.gridSize;
 
-  // Fetch both players' current ratings for header display
-  try {
-    const [s1, s2] = await Promise.all([
-      getDoc(doc(db, 'players', data.player1uid)),
-      getDoc(doc(db, 'players', data.player2uid))
-    ]);
-    onlinePlayerRatings[1] = s1.data()?.rating ?? 1200;
-    onlinePlayerRatings[2] = s2.data()?.rating ?? 1200;
-  } catch (_) {
-    onlinePlayerRatings = { 1: 1200, 2: 1200 };
-  }
-
   // Override updatePlayerDisplays so it shows Firestore ratings, not localStorage ratings
   window.updatePlayerDisplays = () => {
     document.getElementById('player1-display').textContent =
@@ -301,11 +289,9 @@ async function startOnlineGame(data) {
       `${window.player2Name} (${onlinePlayerRatings[2]})`;
   };
 
-  // Hook: intercept cell clicks and route them through online logic
+  // ESSENTIAL: Set online mode hooks BEFORE initializing the game
   window.onlineMode = true;
   window.onlineHandleCellClick = handleOnlineCellClick;
-
-  // Hook: clean up when user clicks "Glavni Izbornik" in-game
   window.onBackToMenuHook = backToLobby;
 
   // Initialize empty board DOM (uses script.js globals)
@@ -316,6 +302,18 @@ async function startOnlineGame(data) {
   unsubscribeGame = onSnapshot(doc(db, 'games', currentGameId), (snap) => {
     if (!snap.exists()) return;
     renderGameState(snap.data());
+  });
+
+  // Fetch ratings in background (non-blocking) — update display when ready
+  Promise.all([
+    getDoc(doc(db, 'players', data.player1uid)),
+    getDoc(doc(db, 'players', data.player2uid))
+  ]).then(([s1, s2]) => {
+    onlinePlayerRatings[1] = s1.data()?.rating ?? 1200;
+    onlinePlayerRatings[2] = s2.data()?.rating ?? 1200;
+    window.updatePlayerDisplays();
+  }).catch(() => {
+    onlinePlayerRatings = { 1: 1200, 2: 1200 };
   });
 }
 
