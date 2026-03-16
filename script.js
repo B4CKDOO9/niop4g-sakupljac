@@ -1,18 +1,19 @@
 const gridContainer = document.getElementById("grid");
-let currentPlayer = 1;
-let player1Name = "";
-let player2Name = "";
-let phase = "place";
-let lastPlaces = null;
-let gameState = [];
-let placementHistory = { 1: [], 2: [] };
-let gridSize = 6;
+// Use var (not let) so these are window properties — online.js sets them via window.*
+var currentPlayer = 1;
+var player1Name = "";
+var player2Name = "";
+var phase = "place";
+var lastPlaces = null;
+var gameState = [];
+var placementHistory = { 1: [], 2: [] };
+var gridSize = 6;
 const STORAGE_KEY_PLAYERS = "sakupljac_players_v1";
 const DEFAULT_FIDE_RATING = 1200;
 const ELO_K_FACTOR = 32;
 
 // Online multiplayer hook — set to true by online.js when an online game is active
-let onlineMode = false;
+var onlineMode = false;
 
 // Elementi
 const menu = document.getElementById("menu");
