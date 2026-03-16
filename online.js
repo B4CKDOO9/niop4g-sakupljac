@@ -31,6 +31,16 @@ const gameArea     = document.getElementById('game-area');
 const gameOverDlg  = document.getElementById('game-over-dialog');
 const leaderDlg    = document.getElementById('leaderboard-dialog');
 
+// ── Capture-phase click listener on #grid — intercepts clicks in online mode
+// before script.js's per-cell listeners can fire (event delegation pattern).
+document.getElementById('grid').addEventListener('click', (e) => {
+  if (!window.onlineMode) return;
+  const cell = e.target.closest('[data-row]');
+  if (!cell) return;
+  e.stopPropagation();
+  handleOnlineCellClick(cell);
+}, true);
+
 // ── Entry: "Online Igra" button in main menu ──────────────────────────────────
 // Only skip auth screen if the user signed in during THIS app session.
 // Stale persisted sessions (from a previous launch) always go through auth.
