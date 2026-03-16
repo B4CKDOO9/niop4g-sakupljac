@@ -418,9 +418,10 @@ function renderGameState(data) {
     return;
   }
 
-  // Player 2: show game-over dialog as soon as Elo deltas arrive from Player 1
+  // Player 2: once deltas arrive from Player 1, update own profile and show dialog
   if (waitingForDeltas && data.result && data.result.delta1 != null) {
     waitingForDeltas = false;
+    updateOwnProfile(data);
     showGameOverDialog(data, data.result);
   }
 
@@ -477,11 +478,13 @@ function safeNum(val, fallback) {
 }
 
 // ── Game over — update ELO in Firestore, show dialog ─────────────────────────
+// Player 1 computes deltas and writes them to the game doc.
+// Each player then updates their OWN profile (Firestore rules only allow self-writes).
 async function handleGameOver(data) {
   const result = data.result;
 
-  // Only player 1's client writes ELO (avoids race condition / double update)
   if (myPlayerNumber === 1) {
+    // Player 1: compute deltas, write own profile, publish deltas for player 2
     const p1ref = doc(db, 'players', data.player1uid);
     const p2ref = doc(db, 'players', data.player2uid);
     try {
@@ -500,24 +503,16 @@ async function handleGameOver(data) {
       const newR1      = Math.max(100, r1 + delta1);
       const newR2      = Math.max(100, r2 + delta2);
 
-      await Promise.all([
-        updateDoc(p1ref, {
-          rating: newR1, games: p1.games + 1,
-          wins:   scoreP1 === 1   ? p1.wins   + 1 : p1.wins,
-          losses: scoreP1 === 0   ? p1.losses + 1 : p1.losses,
-          draws:  scoreP1 === 0.5 ? p1.draws  + 1 : p1.draws,
-          updatedAt: serverTimestamp()
-        }),
-        updateDoc(p2ref, {
-          rating: newR2, games: p2.games + 1,
-          wins:   scoreP1 === 0   ? p2.wins   + 1 : p2.wins,
-          losses: scoreP1 === 1   ? p2.losses + 1 : p2.losses,
-          draws:  scoreP1 === 0.5 ? p2.draws  + 1 : p2.draws,
-          updatedAt: serverTimestamp()
-        })
-      ]);
+      // Update own profile
+      await updateDoc(p1ref, {
+        rating: newR1, games: p1.games + 1,
+        wins:   scoreP1 === 1   ? p1.wins   + 1 : p1.wins,
+        losses: scoreP1 === 0   ? p1.losses + 1 : p1.losses,
+        draws:  scoreP1 === 0.5 ? p1.draws  + 1 : p1.draws,
+        updatedAt: serverTimestamp()
+      });
 
-      // Write deltas back to game doc so player 2 can show them too
+      // Publish deltas to game doc so player 2 can update their own profile
       await updateDoc(doc(db, 'games', currentGameId), {
         'result.delta1': delta1, 'result.newR1': newR1,
         'result.delta2': delta2, 'result.newR2': newR2
@@ -531,9 +526,7 @@ async function handleGameOver(data) {
       showGameOverDialog(data, result);
     }
   } else {
-    // Player 2: wait for Player 1 to write Elo deltas via onSnapshot.
-    // renderGameState will detect waitingForDeltas and show the dialog
-    // as soon as the deltas arrive. Fallback timeout after 10s.
+    // Player 2: wait for deltas from player 1, then update own profile
     waitingForDeltas = true;
     setTimeout(() => {
       if (waitingForDeltas) {
@@ -541,6 +534,37 @@ async function handleGameOver(data) {
         showGameOverDialog(data, localGameData?.result || result);
       }
     }, 10000);
+  }
+}
+
+// Called when player 2 receives deltas from player 1 (via onSnapshot in renderGameState)
+async function updateOwnProfile(data) {
+  const myUid = auth.currentUser?.uid;
+  if (!myUid) return;
+
+  const myRef  = doc(db, 'players', myUid);
+  const result = data.result;
+  const isP1   = myUid === data.player1uid;
+  const newRating = isP1 ? result.newR1 : result.newR2;
+
+  const scoreP1 = result.winner === 1 ? 1 : result.winner === 2 ? 0 : 0.5;
+  const myScore = isP1 ? scoreP1 : (1 - scoreP1);
+
+  try {
+    const snap = await getDoc(myRef);
+    const me = snap.data();
+    if (!me) return;
+
+    await updateDoc(myRef, {
+      rating: newRating,
+      games:  me.games + 1,
+      wins:   myScore === 1   ? me.wins   + 1 : me.wins,
+      losses: myScore === 0   ? me.losses + 1 : me.losses,
+      draws:  myScore === 0.5 ? me.draws  + 1 : me.draws,
+      updatedAt: serverTimestamp()
+    });
+  } catch (err) {
+    console.error('Own profile update error:', err);
   }
 }
 
