@@ -157,6 +157,16 @@ button {
     color: #555;
 }
 
+/* Turn timer (online mod) */
+#turn-timer {
+    display: none;
+    text-align: center;
+    font-size: 28px;
+    font-weight: bold;
+    margin-bottom: 8px;
+    color: #333;
+}
+
 /* Responzivnost */
 @media (max-width: 650px) {
     #grid {

@@ -23,6 +23,10 @@ let gameStarted      = false; // prevents double-calling startOnlineGame
 let waitingForDeltas = false; // Player 2 waits for Player 1 to write Elo deltas
 let onlinePlayerRatings = { 1: 1200, 2: 1200 };
 const ELO_K_FACTOR = 32;  // mirror of script.js (const doesn't go on window)
+let turnTimer = null;
+let turnTimerSeconds = 30;
+const TURN_TIME_LIMIT = 30;
+const MAX_CONSECUTIVE_TIMEOUTS = 3;
 
 // ── DOM shortcuts ─────────────────────────────────────────────────────────────
 const menu         = document.getElementById('menu');
@@ -31,6 +35,7 @@ const onlineLobby  = document.getElementById('online-lobby');
 const gameArea     = document.getElementById('game-area');
 const gameOverDlg  = document.getElementById('game-over-dialog');
 const leaderDlg    = document.getElementById('leaderboard-dialog');
+const timerEl      = document.getElementById('turn-timer');
 
 // ── Capture-phase click listener on #grid — intercepts clicks in online mode
 // before script.js's per-cell listeners can fire (event delegation pattern).
@@ -109,6 +114,7 @@ function showOnlineLobby(user) {
 }
 
 async function backToLobby() {
+  clearTurnTimer();
   // Notify the other player by marking the game as 'left' and recording who left
   if (currentGameId && localGameData && (localGameData.status === 'active' || localGameData.status === 'finished')) {
     const update = { status: 'left' };
@@ -185,6 +191,7 @@ async function createGame() {
       lastPlaces:       null,
       gameStateJSON:    null,
       placementHistory: { p1: [], p2: [] },
+      timeouts:         { p1: 0, p2: 0 },
       result:           null,
       createdAt:        serverTimestamp()
     });
@@ -342,6 +349,73 @@ async function startOnlineGame(data) {
   });
 }
 
+// ── Turn timer ───────────────────────────────────────────────────────────────
+function startTurnTimer() {
+  clearTurnTimer();
+  turnTimerSeconds = TURN_TIME_LIMIT;
+  timerEl.textContent = turnTimerSeconds;
+  timerEl.style.display = 'block';
+  timerEl.style.color = '#333';
+
+  turnTimer = setInterval(() => {
+    turnTimerSeconds--;
+    timerEl.textContent = turnTimerSeconds;
+    if (turnTimerSeconds <= 10) timerEl.style.color = '#dc3545';
+    if (turnTimerSeconds <= 0) {
+      clearInterval(turnTimer);
+      turnTimer = null;
+      onTurnTimeout();
+    }
+  }, 1000);
+}
+
+function clearTurnTimer() {
+  if (turnTimer) { clearInterval(turnTimer); turnTimer = null; }
+  timerEl.style.display = 'none';
+}
+
+async function onTurnTimeout() {
+  if (!localGameData || localGameData.status !== 'active') return;
+  if (localGameData.currentPlayer !== myPlayerNumber) return;
+  if (isWriting) return;
+
+  const timeouts = localGameData.timeouts || { p1: 0, p2: 0 };
+  const myKey = 'p' + myPlayerNumber;
+  // Only count toward auto-loss if the full turn was skipped (timed out during 'place')
+  const isFullSkip = localGameData.phase === 'place';
+  const newCount = isFullSkip ? (timeouts[myKey] || 0) + 1 : (timeouts[myKey] || 0);
+
+  // 3 consecutive full-turn timeouts → instant loss
+  if (newCount >= MAX_CONSECUTIVE_TIMEOUTS) {
+    const gs = window.gameState;
+    const s1 = gs ? biggestGroup(gs, 1, window.gridSize) : 0;
+    const s2 = gs ? biggestGroup(gs, 2, window.gridSize) : 0;
+    const winner = myPlayerNumber === 1 ? 2 : 1;
+
+    isWriting = true;
+    try {
+      await updateDoc(doc(db, 'games', currentGameId), {
+        status: 'finished',
+        result: { winner, score1: s1, score2: s2, timeout: true },
+        [`timeouts.${myKey}`]: newCount
+      });
+    } finally { isWriting = false; }
+    return;
+  }
+
+  // Skip turn — pass to next player
+  const nextPlayer = myPlayerNumber === 1 ? 2 : 1;
+  isWriting = true;
+  try {
+    await updateDoc(doc(db, 'games', currentGameId), {
+      currentPlayer: nextPlayer,
+      phase: 'place',
+      lastPlaces: null,
+      [`timeouts.${myKey}`]: newCount
+    });
+  } finally { isWriting = false; }
+}
+
 // ── Handle cell click — validate then write to Firestore ─────────────────────
 async function handleOnlineCellClick(cell) {
   if (!localGameData || localGameData.status !== 'active') return;
@@ -373,7 +447,8 @@ async function handleOnlineCellClick(cell) {
         phase:            'eliminate',
         lastPlaces:       { row, col },
         gameStateJSON:    JSON.stringify(newGs),
-        placementHistory: newHistory
+        placementHistory: newHistory,
+        [`timeouts.p${myPlayerNumber}`]: 0
       });
     } finally { isWriting = false; }
 
@@ -415,6 +490,7 @@ function renderGameState(data) {
 
   // Other player left — penalize leaver's ELO if game was active, then go to lobby
   if (data.status === 'left') {
+    clearTurnTimer();
     if (data.leftBy && data.leftBy !== auth.currentUser?.uid) {
       // The OTHER player abandoned — increment our games count, then go to lobby
       handleAbandon().finally(() => backToLobby());
@@ -434,6 +510,7 @@ function renderGameState(data) {
   if (!data.gameStateJSON) {
     // Board not yet touched — just update status
     window.updateStatus();
+    if (data.status === 'active') startTurnTimer();
     return;
   }
 
@@ -474,8 +551,12 @@ function renderGameState(data) {
 
   if (data.result && !gameOverHandled) {
     gameOverHandled = true;
+    clearTurnTimer();
     handleGameOver(data);
+    return;
   }
+
+  if (data.status === 'active' && !gameOverHandled) startTurnTimer();
 }
 
 // Safely read a numeric field — returns fallback if NaN, undefined, or not a number
