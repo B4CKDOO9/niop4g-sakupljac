@@ -22,6 +22,7 @@ let signedInThisSession = false; // true only after user completes sign-in this 
 let gameStarted      = false; // prevents double-calling startOnlineGame
 let waitingForDeltas = false; // Player 2 waits for Player 1 to write Elo deltas
 let onlinePlayerRatings = { 1: 1200, 2: 1200 };
+const ELO_K_FACTOR = 32;  // mirror of script.js (const doesn't go on window)
 
 // ── DOM shortcuts ─────────────────────────────────────────────────────────────
 const menu         = document.getElementById('menu');
@@ -108,6 +109,14 @@ function showOnlineLobby(user) {
 }
 
 function backToLobby() {
+  // Notify the other player by marking the game as 'left' and recording who left
+  if (currentGameId && localGameData && (localGameData.status === 'active' || localGameData.status === 'finished')) {
+    const update = { status: 'left' };
+    if (localGameData.status === 'active' && auth.currentUser) {
+      update.leftBy = auth.currentUser.uid;
+    }
+    updateDoc(doc(db, 'games', currentGameId), update).catch(() => {});
+  }
   if (unsubscribeGame) { unsubscribeGame(); unsubscribeGame = null; }
   currentGameId   = null;
   myPlayerNumber  = null;
@@ -398,6 +407,17 @@ async function handleOnlineCellClick(cell) {
 function renderGameState(data) {
   localGameData = data;
 
+  // Other player left — penalize leaver's ELO if game was active, then go to lobby
+  if (data.status === 'left') {
+    if (data.leftBy && data.leftBy !== auth.currentUser?.uid) {
+      // The OTHER player abandoned — we handle the ELO penalty for them
+      handleAbandon(data).finally(() => backToLobby());
+    } else {
+      backToLobby();
+    }
+    return;
+  }
+
   // Player 2: show game-over dialog as soon as Elo deltas arrive from Player 1
   if (waitingForDeltas && data.result && data.result.delta1 != null) {
     waitingForDeltas = false;
@@ -467,7 +487,7 @@ async function handleGameOver(data) {
       // Reuse ELO constants and formula from script.js
       const scoreP1    = result.winner === 1 ? 1 : result.winner === 2 ? 0 : 0.5;
       const expectedP1 = window.getExpectedScore(p1.rating, p2.rating);
-      const delta1     = Math.round(window.ELO_K_FACTOR * (scoreP1 - expectedP1));
+      const delta1     = Math.round(ELO_K_FACTOR * (scoreP1 - expectedP1));
       const delta2     = -delta1;
       const newR1      = Math.max(100, p1.rating + delta1);
       const newR2      = Math.max(100, p2.rating + delta2);
@@ -513,6 +533,42 @@ async function handleGameOver(data) {
         showGameOverDialog(data, localGameData?.result || result);
       }
     }, 10000);
+  }
+}
+
+// ── Abandon — penalize leaver, other player keeps their ELO ──────────────────
+async function handleAbandon(data) {
+  const leaverUid  = data.leftBy;
+  const leaverIsP1 = leaverUid === data.player1uid;
+  const leaverRef  = doc(db, 'players', leaverUid);
+  const stayerRef  = doc(db, 'players', leaverIsP1 ? data.player2uid : data.player1uid);
+
+  try {
+    const [leaverSnap, stayerSnap] = await Promise.all([getDoc(leaverRef), getDoc(stayerRef)]);
+    const leaver = leaverSnap.data();
+    const stayer = stayerSnap.data();
+    if (!leaver || !stayer) return;
+
+    // Leaver is treated as having lost (score = 0)
+    const expected = window.getExpectedScore(leaver.rating, stayer.rating);
+    const delta    = Math.round(ELO_K_FACTOR * (0 - expected));
+    const newRating = Math.max(100, leaver.rating + delta);
+
+    // Only deduct from leaver — stayer keeps their rating
+    await updateDoc(leaverRef, {
+      rating: newRating,
+      games:  leaver.games + 1,
+      losses: leaver.losses + 1,
+      updatedAt: serverTimestamp()
+    });
+
+    // Increment stayer's games count (no rating change, counts as no-contest)
+    await updateDoc(stayerRef, {
+      games: stayer.games + 1,
+      updatedAt: serverTimestamp()
+    });
+  } catch (err) {
+    console.error('Abandon ELO update error:', err);
   }
 }
 
