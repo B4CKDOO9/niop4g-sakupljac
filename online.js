@@ -131,6 +131,7 @@ function backToLobby() {
   gameOverDlg.style.display = 'none';
   gameArea.style.display    = 'none';
   document.getElementById('name-dialog').style.display = 'none';
+  document.getElementById('reset-btn').style.display = '';
 
   const user = auth.currentUser;
   if (user) showOnlineLobby(user);
@@ -307,6 +308,9 @@ async function startOnlineGame(data) {
     document.getElementById('player2-display').textContent =
       `${window.player2Name} (${onlinePlayerRatings[2]})`;
   };
+
+  // Hide reset button in online mode
+  document.getElementById('reset-btn').style.display = 'none';
 
   // ESSENTIAL: Set online mode hooks BEFORE initializing the game
   window.onlineMode = true;
