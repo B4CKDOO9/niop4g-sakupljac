@@ -34,10 +34,8 @@ const leaderDlg    = document.getElementById('leaderboard-dialog');
 // ── Capture-phase click listener on #grid — intercepts clicks in online mode
 // before script.js's per-cell listeners can fire (event delegation pattern).
 document.getElementById('grid').addEventListener('click', (e) => {
-  console.log('[GRID CAPTURE] click, onlineMode=', window.onlineMode, 'target=', e.target.tagName);
   if (!window.onlineMode) return;
   const cell = e.target.closest('[data-row]');
-  console.log('[GRID CAPTURE] cell found=', !!cell);
   if (!cell) return;
   e.stopPropagation();
   handleOnlineCellClick(cell);
@@ -331,17 +329,15 @@ async function startOnlineGame(data) {
 
 // ── Handle cell click — validate then write to Firestore ─────────────────────
 async function handleOnlineCellClick(cell) {
-  console.log('[ONLINE CLICK] localGameData=', localGameData ? {status: localGameData.status, currentPlayer: localGameData.currentPlayer, phase: localGameData.phase} : null);
-  console.log('[ONLINE CLICK] myPlayerNumber=', myPlayerNumber, 'isWriting=', isWriting);
-  if (!localGameData || localGameData.status !== 'active') { console.log('[ONLINE CLICK] BLOCKED: localGameData check'); return; }
-  if (localGameData.currentPlayer !== myPlayerNumber) { console.log('[ONLINE CLICK] BLOCKED: not my turn', localGameData.currentPlayer, '!==', myPlayerNumber); return; }
-  if (isWriting) { console.log('[ONLINE CLICK] BLOCKED: isWriting'); return; }
+  if (!localGameData || localGameData.status !== 'active') return;
+  if (localGameData.currentPlayer !== myPlayerNumber) return;
+  if (isWriting) return;
 
   const row = parseInt(cell.dataset.row);
   const col = parseInt(cell.dataset.col);
 
   const gs = window.gameState;
-  if (gs[row][col].player !== null || gs[row][col].eliminated) { console.log('[ONLINE CLICK] BLOCKED: cell occupied/eliminated'); return; }
+  if (gs[row][col].player !== null || gs[row][col].eliminated) return;
 
   if (localGameData.phase === 'place') {
     // Reuse adjacentCells from script.js (reads window.gameState)
@@ -353,7 +349,7 @@ async function handleOnlineCellClick(cell) {
     const newGs      = deepCopyState(gs);
     const newHistory = deepCopyHistory(window.placementHistory);
     newGs[row][col].player = myPlayerNumber;
-    newHistory['p' + myPlayerNumber].push([row, col]);
+    newHistory['p' + myPlayerNumber].push({r: row, c: col});
 
     isWriting = true;
     try {
@@ -417,8 +413,8 @@ function renderGameState(data) {
   // Sync local state from Firestore
   window.gameState        = JSON.parse(data.gameStateJSON);
   window.placementHistory = {
-    1: (data.placementHistory.p1 || []).map(p => [...p]),
-    2: (data.placementHistory.p2 || []).map(p => [...p])
+    1: (data.placementHistory.p1 || []).map(p => Array.isArray(p) ? [...p] : [p.r, p.c]),
+    2: (data.placementHistory.p2 || []).map(p => Array.isArray(p) ? [...p] : [p.r, p.c])
   };
   window.currentPlayer = data.currentPlayer;
   window.phase         = data.phase;
@@ -654,9 +650,11 @@ function deepCopyState(gs) {
 }
 
 function deepCopyHistory(h) {
+  const arr1 = h.p1 || h[1] || [];
+  const arr2 = h.p2 || h[2] || [];
   return {
-    p1: (h.p1 || h[1] || []).map(p => [...p]),
-    p2: (h.p2 || h[2] || []).map(p => [...p])
+    p1: arr1.map(p => Array.isArray(p) ? {r: p[0], c: p[1]} : {r: p.r, c: p.c}),
+    p2: arr2.map(p => Array.isArray(p) ? {r: p[0], c: p[1]} : {r: p.r, c: p.c})
   };
 }
 
