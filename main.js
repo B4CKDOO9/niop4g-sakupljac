@@ -2,6 +2,8 @@ const { app, BrowserWindow, Menu, shell, ipcMain } = require('electron')
 const http = require('http')
 
 let win
+let activeOAuthServer  = null
+let activeOAuthTimeout = null
 
 // Register custom protocol for Google OAuth deep-link callback
 // The OS will route sakupljac:// URLs back to this app after sign-in
@@ -37,23 +39,51 @@ ipcMain.handle('open-external', (_event, url) => shell.openExternal(url))
 // Starts a one-shot local HTTP server on a random free port.
 // Returns the port so the renderer can build the OAuth redirect URI.
 // When the browser hits /callback?code=..., forwards the URL to the renderer and shuts down.
+// Times out after 3 minutes if the user never completes sign-in.
+function cleanupOAuthServer() {
+    if (activeOAuthTimeout) { clearTimeout(activeOAuthTimeout); activeOAuthTimeout = null }
+    if (activeOAuthServer)  { try { activeOAuthServer.close() } catch (_) {} activeOAuthServer = null }
+}
+
 ipcMain.handle('start-oauth-server', () => {
+    // Close any lingering server from a previous attempt
+    cleanupOAuthServer()
+
     return new Promise((resolve, reject) => {
         const server = http.createServer((req, res) => {
             if (req.url && req.url.startsWith('/callback')) {
                 res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' })
                 res.end('<h2>Prijava uspješna! Možete zatvoriti ovaj prozor.</h2>')
                 if (win) win.webContents.send('oauth-callback', 'http://127.0.0.1' + req.url)
-                setTimeout(() => server.close(), 500)
+                clearTimeout(activeOAuthTimeout)
+                activeOAuthTimeout = null
+                setTimeout(() => { server.close(); activeOAuthServer = null }, 500)
             } else {
                 res.writeHead(404); res.end()
             }
         })
+
+        activeOAuthServer = server
+
+        activeOAuthTimeout = setTimeout(() => {
+            server.close()
+            activeOAuthServer  = null
+            activeOAuthTimeout = null
+            if (win) win.webContents.send('oauth-server-timeout')
+        }, 3 * 60 * 1000)
+
         server.listen(0, '127.0.0.1', () => {
             resolve(server.address().port)
         })
-        server.on('error', reject)
+        server.on('error', (err) => {
+            cleanupOAuthServer()
+            reject(err)
+        })
     })
+})
+
+ipcMain.handle('cancel-oauth-server', () => {
+    cleanupOAuthServer()
 })
 
 const createWindow = () => {

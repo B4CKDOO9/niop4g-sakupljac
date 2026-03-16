@@ -125,7 +125,7 @@ button {
     margin-top: 20px;
 }
 
-/* Online ekrani (auth i lobby) */
+/* Online ekrani (auth i lobby) — hidden by default, JS sets display:flex to show */
 #auth-screen, #online-lobby {
     position: fixed;
     top: 0;
@@ -133,10 +133,18 @@ button {
     width: 100%;
     height: 100%;
     background: white;
-    display: flex;
+    display: none;
     justify-content: center;
     align-items: center;
     z-index: 50;
+}
+
+/* Lobby sub-sections — hidden by default, JS toggles them */
+#create-game-options,
+#waiting-room,
+#join-room-form {
+    display: none;
+    margin-top: 12px;
 }
 
 #auth-content, #online-lobby-content {

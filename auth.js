@@ -90,4 +90,20 @@ ipcRenderer.on('oauth-callback', async (_event, callbackUrl) => {
   }
 });
 
+// Cancels a pending sign-in: clears PKCE state and tells main.js to kill the OAuth server.
+export function cancelGoogleSignIn() {
+  codeVerifier       = null;
+  currentRedirectUri = null;
+  ipcRenderer.invoke('cancel-oauth-server');
+}
+
+// If the OAuth server times out (user closed browser without completing sign-in),
+// reset state and show a message on the auth screen.
+ipcRenderer.on('oauth-server-timeout', () => {
+  codeVerifier       = null;
+  currentRedirectUri = null;
+  const statusEl = document.getElementById('auth-status');
+  if (statusEl) statusEl.textContent = 'Prijava je istekla. Pokušajte ponovo.';
+});
+
 export { auth, signOut, onAuthStateChanged };

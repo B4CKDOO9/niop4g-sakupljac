@@ -1,9 +1,14 @@
 import { db, auth } from './firebase-config.js';
-import { startGoogleSignIn, signOut, onAuthStateChanged } from './auth.js';
+import { startGoogleSignIn, cancelGoogleSignIn, signOut, onAuthStateChanged } from './auth.js';
 import {
   doc, collection, setDoc, updateDoc, getDoc, getDocs,
   onSnapshot, serverTimestamp, query, orderBy
 } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
+
+// ── Clear any persisted Firebase session (best-effort, non-blocking).
+// The signedInThisSession flag is the real guard — it ensures stale sessions
+// from a previous launch can never bypass the auth screen.
+signOut(auth).catch(() => {});
 
 // ── State ─────────────────────────────────────────────────────────────────────
 let currentGameId    = null;
@@ -12,6 +17,10 @@ let localGameData    = null;  // last Firestore snapshot
 let unsubscribeGame  = null;
 let gameOverHandled  = false;
 let isWriting        = false; // prevents double-clicks during Firestore write
+let pendingSignIn    = false; // true only while user is actively signing in
+let signedInThisSession = false; // true only after user completes sign-in this launch
+let gameStarted      = false; // prevents double-calling startOnlineGame
+let waitingForDeltas = false; // Player 2 waits for Player 1 to write Elo deltas
 let onlinePlayerRatings = { 1: 1200, 2: 1200 };
 
 // ── DOM shortcuts ─────────────────────────────────────────────────────────────
@@ -23,8 +32,10 @@ const gameOverDlg  = document.getElementById('game-over-dialog');
 const leaderDlg    = document.getElementById('leaderboard-dialog');
 
 // ── Entry: "Online Igra" button in main menu ──────────────────────────────────
+// Only skip auth screen if the user signed in during THIS app session.
+// Stale persisted sessions (from a previous launch) always go through auth.
 document.getElementById('online-game-btn').addEventListener('click', () => {
-  if (auth.currentUser) {
+  if (signedInThisSession && auth.currentUser) {
     showOnlineLobby(auth.currentUser);
   } else {
     menu.style.display = 'none';
@@ -35,18 +46,25 @@ document.getElementById('online-game-btn').addEventListener('click', () => {
 // ── Auth screen ───────────────────────────────────────────────────────────────
 document.getElementById('sign-in-btn').addEventListener('click', () => {
   document.getElementById('auth-status').textContent = 'Otvaranje preglednika za prijavu...';
+  pendingSignIn = true;
   startGoogleSignIn();
 });
 
 document.getElementById('auth-cancel-btn').addEventListener('click', () => {
+  cancelGoogleSignIn();
+  pendingSignIn = false;
+  document.getElementById('auth-status').textContent = 'Prijavite se za online igru.';
   authScreen.style.display = 'none';
   menu.style.display = 'flex';
 });
 
-// Listen for successful sign-in (triggered by auth.js after OAuth callback)
+// Listen for successful sign-in (triggered by auth.js after OAuth callback).
+// Only navigates to lobby when the user actively initiated sign-in (pendingSignIn flag).
+// On cold start, signOut() above clears any stale session, so this won't fire spuriously.
 onAuthStateChanged(auth, async (user) => {
-  if (user && authScreen.style.display === 'flex') {
-    // User just signed in from the auth screen — go to lobby
+  if (user && pendingSignIn) {
+    pendingSignIn = false;
+    signedInThisSession = true;
     try { await ensurePlayerProfile(user); } catch (e) { console.warn('Profile init failed:', e); }
     showOnlineLobby(user);
   }
@@ -85,6 +103,7 @@ function backToLobby() {
   myPlayerNumber  = null;
   localGameData   = null;
   gameOverHandled = false;
+  gameStarted     = false;
   isWriting       = false;
   window.onlineMode = false;
   window.onlineHandleCellClick = undefined;
@@ -249,6 +268,8 @@ function generateGameCode() {
 
 // ── Start game on both clients ────────────────────────────────────────────────
 async function startOnlineGame(data) {
+  if (gameStarted) return;
+  gameStarted = true;
   if (unsubscribeGame) unsubscribeGame();
 
   onlineLobby.style.display = 'none';
@@ -369,6 +390,12 @@ async function handleOnlineCellClick(cell) {
 function renderGameState(data) {
   localGameData = data;
 
+  // Player 2: show game-over dialog as soon as Elo deltas arrive from Player 1
+  if (waitingForDeltas && data.result && data.result.delta1 != null) {
+    waitingForDeltas = false;
+    showGameOverDialog(data, data.result);
+  }
+
   if (!data.gameStateJSON) {
     // Board not yet touched — just update status
     window.updateStatus();
@@ -468,12 +495,16 @@ async function handleGameOver(data) {
       showGameOverDialog(data, result);
     }
   } else {
-    // Player 2 waits briefly for player 1 to write the rating changes
+    // Player 2: wait for Player 1 to write Elo deltas via onSnapshot.
+    // renderGameState will detect waitingForDeltas and show the dialog
+    // as soon as the deltas arrive. Fallback timeout after 10s.
+    waitingForDeltas = true;
     setTimeout(() => {
-      // Re-read localGameData in case onSnapshot updated it with the deltas
-      const r = localGameData?.result || result;
-      showGameOverDialog(data, r);
-    }, 2500);
+      if (waitingForDeltas) {
+        waitingForDeltas = false;
+        showGameOverDialog(data, localGameData?.result || result);
+      }
+    }, 10000);
   }
 }
 
