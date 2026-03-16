@@ -38,21 +38,30 @@
                 <button id="sign-out-btn">Odjavi se</button>
             </div>
             <h1>Sakupljač — Online</h1>
-            <button id="create-game-btn">Nova Igra</button>
+            <button id="create-casual-btn">Casual Igra</button>
+            <button id="create-ranked-btn">Ranked Igra</button>
             <button id="join-game-btn">Pridruži se</button>
             <button id="online-leaderboard-btn">Leaderboard</button>
             <button id="online-back-btn">Natrag</button>
 
             <div id="create-game-options" style="display:none; margin-top:12px;">
-                <label for="lobby-grid-size" style="display:block; margin-bottom:5px;">Veličina polja:</label>
-                <select id="lobby-grid-size" style="width:150px; margin-bottom:10px; padding:5px;">
-                    <option value="4">4×4</option>
-                    <option value="6" selected>6×6</option>
-                    <option value="8">8×8</option>
-                    <option value="10">10×10</option>
-                    <option value="12">12×12</option>
-                </select>
-                <br>
+                <p id="create-mode-label" style="font-weight:bold; margin-bottom:8px;"></p>
+                <div id="casual-options">
+                    <label for="lobby-grid-size" style="display:block; margin-bottom:5px;">Veličina polja:</label>
+                    <select id="lobby-grid-size" style="width:150px; margin-bottom:10px; padding:5px;">
+                        <option value="4">4×4</option>
+                        <option value="6" selected>6×6</option>
+                        <option value="8">8×8</option>
+                        <option value="10">10×10</option>
+                        <option value="12">12×12</option>
+                    </select>
+                    <label style="display:block; margin-bottom:10px; font-size:14px; cursor:pointer;">
+                        <input type="checkbox" id="online-timer-checkbox" /> Igraj s timerom (30s po potezu)
+                    </label>
+                </div>
+                <div id="ranked-info" style="display:none; margin-bottom:10px;">
+                    <p style="margin:0;">Ploča: 8×8 | Timer: 30s po potezu</p>
+                </div>
                 <button id="confirm-create-btn">Stvori sobu</button>
                 <button id="cancel-create-btn">Odustani</button>
             </div>

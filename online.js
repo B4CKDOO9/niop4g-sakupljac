@@ -22,6 +22,8 @@ let signedInThisSession = false; // true only after user completes sign-in this 
 let gameStarted      = false; // prevents double-calling startOnlineGame
 let waitingForDeltas = false; // Player 2 waits for Player 1 to write Elo deltas
 let onlinePlayerRatings = { 1: 1200, 2: 1200 };
+let gameMode            = null;   // 'casual' or 'ranked'
+let onlineTimerEnabled  = false;  // whether this game has a turn timer
 const ELO_K_FACTOR = 32;  // mirror of script.js (const doesn't go on window)
 let turnTimer = null;
 let turnTimerSeconds = 30;
@@ -131,7 +133,9 @@ async function backToLobby() {
   localGameData   = null;
   gameOverHandled = false;
   gameStarted     = false;
-  isWriting       = false;
+  isWriting          = false;
+  gameMode           = null;
+  onlineTimerEnabled = false;
   window.onlineMode = false;
   window.onlineHandleCellClick = undefined;
   window.onBackToMenuHook      = undefined;
@@ -159,11 +163,20 @@ document.getElementById('online-back-btn').addEventListener('click', () => {
 });
 
 // ── Create game ───────────────────────────────────────────────────────────────
-document.getElementById('create-game-btn').addEventListener('click', () => {
+function showCreateOptions(mode) {
+  gameMode = mode;
   document.getElementById('create-game-options').style.display = 'block';
   document.getElementById('waiting-room').style.display        = 'none';
   document.getElementById('join-room-form').style.display      = 'none';
-});
+
+  const isCasual = mode === 'casual';
+  document.getElementById('create-mode-label').textContent = isCasual ? 'Casual Igra' : 'Ranked Igra';
+  document.getElementById('casual-options').style.display  = isCasual ? 'block' : 'none';
+  document.getElementById('ranked-info').style.display     = isCasual ? 'none'  : 'block';
+}
+
+document.getElementById('create-casual-btn').addEventListener('click', () => showCreateOptions('casual'));
+document.getElementById('create-ranked-btn').addEventListener('click', () => showCreateOptions('ranked'));
 
 document.getElementById('cancel-create-btn').addEventListener('click', () => {
   document.getElementById('create-game-options').style.display = 'none';
@@ -175,17 +188,21 @@ async function createGame() {
   const user     = auth.currentUser;
   const gameCode = generateGameCode();
   const gameId   = 'game_' + gameCode;
-  const size     = parseInt(document.getElementById('lobby-grid-size').value);
+  const isRanked = gameMode === 'ranked';
+  const size     = isRanked ? 8 : parseInt(document.getElementById('lobby-grid-size').value);
+  const timer    = isRanked ? true : document.getElementById('online-timer-checkbox').checked;
 
   try {
     await setDoc(doc(db, 'games', gameId), {
       gameCode,
+      mode:             gameMode,
       status:           'waiting',
       player1uid:       user.uid,
       player1name:      user.displayName || user.email,
       player2uid:       null,
       player2name:      null,
       gridSize:         size,
+      timerEnabled:     timer,
       currentPlayer:    1,
       phase:            'place',
       lastPlaces:       null,
@@ -304,18 +321,20 @@ async function startOnlineGame(data) {
   onlineLobby.style.display = 'none';
   gameArea.style.display    = 'block';
   gameOverHandled = false;
+  gameMode           = data.mode || 'ranked';
+  onlineTimerEnabled = data.timerEnabled !== false;
 
   // Set globals that script.js uses for rendering
   window.player1Name = data.player1name;
   window.player2Name = data.player2name;
   window.gridSize    = data.gridSize;
 
-  // Override updatePlayerDisplays so it shows Firestore ratings, not localStorage ratings
+  // Override updatePlayerDisplays — show ratings only for ranked
   window.updatePlayerDisplays = () => {
-    document.getElementById('player1-display').textContent =
-      `${window.player1Name} (${onlinePlayerRatings[1]})`;
-    document.getElementById('player2-display').textContent =
-      `${window.player2Name} (${onlinePlayerRatings[2]})`;
+    const suffix1 = gameMode === 'ranked' ? ` (${onlinePlayerRatings[1]})` : '';
+    const suffix2 = gameMode === 'ranked' ? ` (${onlinePlayerRatings[2]})` : '';
+    document.getElementById('player1-display').textContent = window.player1Name + suffix1;
+    document.getElementById('player2-display').textContent = window.player2Name + suffix2;
   };
 
   // Hide reset button in online mode
@@ -336,17 +355,19 @@ async function startOnlineGame(data) {
     renderGameState(snap.data());
   });
 
-  // Fetch ratings in background (non-blocking) — update display when ready
-  Promise.all([
-    getDoc(doc(db, 'players', data.player1uid)),
-    getDoc(doc(db, 'players', data.player2uid))
-  ]).then(([s1, s2]) => {
-    onlinePlayerRatings[1] = safeNum(s1.data()?.rating, 1200);
-    onlinePlayerRatings[2] = safeNum(s2.data()?.rating, 1200);
-    window.updatePlayerDisplays();
-  }).catch(() => {
-    onlinePlayerRatings = { 1: 1200, 2: 1200 };
-  });
+  // Fetch ratings in background (non-blocking) — ranked only
+  if (gameMode === 'ranked') {
+    Promise.all([
+      getDoc(doc(db, 'players', data.player1uid)),
+      getDoc(doc(db, 'players', data.player2uid))
+    ]).then(([s1, s2]) => {
+      onlinePlayerRatings[1] = safeNum(s1.data()?.rating, 1200);
+      onlinePlayerRatings[2] = safeNum(s2.data()?.rating, 1200);
+      window.updatePlayerDisplays();
+    }).catch(() => {
+      onlinePlayerRatings = { 1: 1200, 2: 1200 };
+    });
+  }
 }
 
 // ── Turn timer ───────────────────────────────────────────────────────────────
@@ -510,7 +531,7 @@ function renderGameState(data) {
   if (!data.gameStateJSON) {
     // Board not yet touched — just update status
     window.updateStatus();
-    if (data.status === 'active') startTurnTimer();
+    if (data.status === 'active' && onlineTimerEnabled) startTurnTimer();
     return;
   }
 
@@ -556,7 +577,7 @@ function renderGameState(data) {
     return;
   }
 
-  if (data.status === 'active' && !gameOverHandled) startTurnTimer();
+  if (data.status === 'active' && !gameOverHandled && onlineTimerEnabled) startTurnTimer();
 }
 
 // Safely read a numeric field — returns fallback if NaN, undefined, or not a number
@@ -569,6 +590,12 @@ function safeNum(val, fallback) {
 // Each player then updates their OWN profile (Firestore rules only allow self-writes).
 async function handleGameOver(data) {
   const result = data.result;
+
+  // Casual mode — no ELO changes, just show scores
+  if (gameMode === 'casual') {
+    showGameOverDialog(data, result);
+    return;
+  }
 
   if (myPlayerNumber === 1) {
     // Player 1: compute deltas, write own profile, publish deltas for player 2
@@ -660,6 +687,7 @@ async function updateOwnProfile(data) {
 // Called by the LEAVER (in backToLobby) to deduct their own ELO before leaving.
 // Each player can only write to their own /players/{uid} doc (Firestore rules).
 async function selfPenalizeLeaver(data) {
+  if (gameMode === 'casual') return;
   const myUid = auth.currentUser?.uid;
   if (!myUid) return;
 
@@ -695,6 +723,7 @@ async function selfPenalizeLeaver(data) {
 // Called by the STAYER when they detect the other player left.
 // Only updates the stayer's own doc — no rating change, just increment games.
 async function handleAbandon() {
+  if (gameMode === 'casual') return;
   const myUid = auth.currentUser?.uid;
   if (!myUid) return;
 
