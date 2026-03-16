@@ -252,7 +252,7 @@ function handleCellClick(cell) {
       updateStatus();
     } else {
       alert(
-        "Nevaljano postavljanje! Morate postaviti pokraj postojeće pločice ili na prazno polje.",
+        "Nevaljano postavljanje! Morate postaviti pokraj postojeće točke ili na prazno polje.",
       );
     }
   } else if (phase === "eliminate") {
@@ -280,7 +280,7 @@ function updateStatus() {
   let color = currentPlayer === 1 ? "#dc3545" : "#007bff";
 
   if (phase === "place") {
-    document.getElementById("status").textContent = `${name} - Postavi pločicu`;
+    document.getElementById("status").textContent = `${name} - Postavi točku`;
   } else {
     document.getElementById("status").textContent = `${name} - Osjenči ćeliju`;
   }
@@ -511,16 +511,16 @@ function checkGameOver() {
   let message = "";
 
   if (p1 === p2) {
-    message = `Neriješeno! Oboje imate ${p1} povezanih pločica.\nRejting: ${player1Name} ${formatRatingDelta(ratingUpdate.delta1)} (${ratingUpdate.rating1}), ${player2Name} ${formatRatingDelta(ratingUpdate.delta2)} (${ratingUpdate.rating2}).`;
+    message = `Neriješeno! Oboje imate ${p1} povezanih točaka.\nRejting: ${player1Name} ${formatRatingDelta(ratingUpdate.delta1)} (${ratingUpdate.rating1}), ${player2Name} ${formatRatingDelta(ratingUpdate.delta2)} (${ratingUpdate.rating2}).`;
     document.getElementById("status").textContent = "Neriješeno!";
     document.getElementById("status").style.color = "#6c757d";
   } else if (p1 > p2) {
-    message = `${player1Name} pobjeđuje s ${p1} povezanih pločica! (${player2Name}: ${p2})\nRejting: ${player1Name} ${formatRatingDelta(ratingUpdate.delta1)} (${ratingUpdate.rating1}), ${player2Name} ${formatRatingDelta(ratingUpdate.delta2)} (${ratingUpdate.rating2}).`;
+    message = `${player1Name} pobjeđuje s ${p1} povezanih točka! (${player2Name}: ${p2})\nRejting: ${player1Name} ${formatRatingDelta(ratingUpdate.delta1)} (${ratingUpdate.rating1}), ${player2Name} ${formatRatingDelta(ratingUpdate.delta2)} (${ratingUpdate.rating2}).`;
     document.getElementById("status").textContent =
       `Pobjednik: ${player1Name}!`;
     document.getElementById("status").style.color = "#dc3545";
   } else {
-    message = `${player2Name} pobjeđuje s ${p2} povezanih pločica! (${player1Name}: ${p1})\nRejting: ${player2Name} ${formatRatingDelta(ratingUpdate.delta2)} (${ratingUpdate.rating2}), ${player1Name} ${formatRatingDelta(ratingUpdate.delta1)} (${ratingUpdate.rating1}).`;
+    message = `${player2Name} pobjeđuje s ${p2} povezanih točaka! (${player1Name}: ${p1})\nRejting: ${player2Name} ${formatRatingDelta(ratingUpdate.delta2)} (${ratingUpdate.rating2}), ${player1Name} ${formatRatingDelta(ratingUpdate.delta1)} (${ratingUpdate.rating1}).`;
     document.getElementById("status").textContent =
       `Pobjednik: ${player2Name}!`;
     document.getElementById("status").style.color = "#007bff";
