@@ -328,8 +328,8 @@ async function startOnlineGame(data) {
     getDoc(doc(db, 'players', data.player1uid)),
     getDoc(doc(db, 'players', data.player2uid))
   ]).then(([s1, s2]) => {
-    onlinePlayerRatings[1] = s1.data()?.rating ?? 1200;
-    onlinePlayerRatings[2] = s2.data()?.rating ?? 1200;
+    onlinePlayerRatings[1] = safeNum(s1.data()?.rating, 1200);
+    onlinePlayerRatings[2] = safeNum(s2.data()?.rating, 1200);
     window.updatePlayerDisplays();
   }).catch(() => {
     onlinePlayerRatings = { 1: 1200, 2: 1200 };
@@ -471,6 +471,11 @@ function renderGameState(data) {
   }
 }
 
+// Safely read a numeric field — returns fallback if NaN, undefined, or not a number
+function safeNum(val, fallback) {
+  return (typeof val === 'number' && !isNaN(val)) ? val : fallback;
+}
+
 // ── Game over — update ELO in Firestore, show dialog ─────────────────────────
 async function handleGameOver(data) {
   const result = data.result;
@@ -483,14 +488,17 @@ async function handleGameOver(data) {
       const [snap1, snap2] = await Promise.all([getDoc(p1ref), getDoc(p2ref)]);
       const p1 = snap1.data();
       const p2 = snap2.data();
+      if (!p1 || !p2) return;
 
-      // Reuse ELO constants and formula from script.js
+      const r1 = safeNum(p1.rating, 1200);
+      const r2 = safeNum(p2.rating, 1200);
+
       const scoreP1    = result.winner === 1 ? 1 : result.winner === 2 ? 0 : 0.5;
-      const expectedP1 = window.getExpectedScore(p1.rating, p2.rating);
+      const expectedP1 = window.getExpectedScore(r1, r2);
       const delta1     = Math.round(ELO_K_FACTOR * (scoreP1 - expectedP1));
       const delta2     = -delta1;
-      const newR1      = Math.max(100, p1.rating + delta1);
-      const newR2      = Math.max(100, p2.rating + delta2);
+      const newR1      = Math.max(100, r1 + delta1);
+      const newR2      = Math.max(100, r2 + delta2);
 
       await Promise.all([
         updateDoc(p1ref, {
@@ -549,10 +557,13 @@ async function handleAbandon(data) {
     const stayer = stayerSnap.data();
     if (!leaver || !stayer) return;
 
+    const leaverRating = safeNum(leaver.rating, 1200);
+    const stayerRating = safeNum(stayer.rating, 1200);
+
     // Leaver is treated as having lost (score = 0)
-    const expected = window.getExpectedScore(leaver.rating, stayer.rating);
+    const expected = window.getExpectedScore(leaverRating, stayerRating);
     const delta    = Math.round(ELO_K_FACTOR * (0 - expected));
-    const newRating = Math.max(100, leaver.rating + delta);
+    const newRating = Math.max(100, leaverRating + delta);
 
     // Only deduct from leaver — stayer keeps their rating
     await updateDoc(leaverRef, {
