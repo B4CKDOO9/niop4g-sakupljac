@@ -2,7 +2,7 @@ import { db, auth } from './firebase-config.js';
 import { startGoogleSignIn, cancelGoogleSignIn, signOut, onAuthStateChanged } from './auth.js';
 import {
   doc, collection, setDoc, updateDoc, getDoc, getDocs, deleteDoc,
-  onSnapshot, serverTimestamp, query, orderBy
+  onSnapshot, serverTimestamp, query, where, orderBy
 } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
 
 // ── Clear any persisted Firebase session (best-effort, non-blocking).
@@ -122,15 +122,21 @@ function showOnlineLobby(user) {
 
 function subscribePublicRooms() {
   if (unsubscribePublicRooms) { unsubscribePublicRooms(); unsubscribePublicRooms = null; }
-  const q = query(collection(db, 'games'), orderBy('createdAt', 'desc'));
+  // Server-side filter: only fetch waiting public rooms — avoids downloading every
+  // finished/active game ever played. The expiresAt TTL client-side check below
+  // handles rooms whose host crashed without deleting them.
+  const q = query(
+    collection(db, 'games'),
+    where('status', '==', 'waiting'),
+    where('visibility', '==', 'public'),
+    orderBy('createdAt', 'desc')
+  );
   unsubscribePublicRooms = onSnapshot(q, (snap) => {
     const rooms = [];
     snap.forEach(d => {
       const data = d.data();
       const notExpired = !data.expiresAt || data.expiresAt.toDate() > new Date();
-      if (data.visibility === 'public' && data.status === 'waiting' && notExpired) {
-        rooms.push({ id: d.id, ...data });
-      }
+      if (notExpired) rooms.push({ id: d.id, ...data });
     });
     renderPublicRooms(rooms);
   });
@@ -636,9 +642,13 @@ function renderGameState(data) {
   if (data.status === 'left') {
     clearTurnTimer();
     if (data.leftBy && data.leftBy !== auth.currentUser?.uid) {
-      // The OTHER player abandoned — increment our games count, then go to lobby
-      handleAbandon().finally(() => backToLobby());
+      // The OTHER player abandoned — update our stats, delete the doc, then go to lobby
+      handleAbandon().finally(() => {
+        deleteDoc(doc(db, 'games', currentGameId)).catch(() => {});
+        backToLobby();
+      });
     } else {
+      // We are the one who left — doc cleanup handled by leaver's backToLobby
       backToLobby();
     }
     return;
