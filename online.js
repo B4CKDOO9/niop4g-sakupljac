@@ -120,7 +120,6 @@ function showOnlineLobby(user) {
 
 function subscribePublicRooms() {
   if (unsubscribePublicRooms) { unsubscribePublicRooms(); unsubscribePublicRooms = null; }
-
   const q = query(collection(db, 'games'), orderBy('createdAt', 'desc'));
   unsubscribePublicRooms = onSnapshot(q, (snap) => {
     const rooms = [];
@@ -137,39 +136,34 @@ function subscribePublicRooms() {
 function renderPublicRooms(rooms) {
   const list = document.getElementById('public-rooms-list');
   if (!list) return;
-
   if (rooms.length === 0) {
     list.innerHTML = '<div style="color:#999; font-size:13px; padding:8px;">Nema otvorenih javnih soba.</div>';
     return;
   }
-
   list.innerHTML = rooms.map(room => {
-    const isRanked  = room.mode === 'ranked';
-    const gridLabel = `${room.gridSize}×${room.gridSize}`;
-    const modeLabel = isRanked ? 'Ranked' : 'Casual';
+    const isRanked   = room.mode === 'ranked';
+    const gridLabel  = room.gridSize + '×' + room.gridSize;
+    const modeLabel  = isRanked ? 'Ranked' : 'Casual';
     const timerLabel = room.timerEnabled ? ' · Timer' : '';
-
     let creatorLabel = escHtml(room.player1name || '?');
     if (isRanked && room.player1rating != null) {
-      creatorLabel += ` <span style="color:#888; font-size:12px;">(${room.player1rating})</span>`;
+      creatorLabel += ' <span style="color:#888;font-size:12px;">(' + room.player1rating + ')</span>';
     }
-
     const isOwn = auth.currentUser && room.player1uid === auth.currentUser.uid;
     const btn = isOwn
-      ? `<span style="color:#aaa; font-size:12px; font-style:italic;">Vaša soba</span>`
-      : `<button onclick="window.joinPublicRoom('${room.id}')" style="padding:4px 12px; font-size:13px; cursor:pointer;">Pridruži se</button>`;
-
-    return `<div style="display:flex; justify-content:space-between; align-items:center;
-                        padding:7px 4px; border-bottom:1px solid #e0e0e0;">
-      <span style="font-size:13px;">${creatorLabel} &nbsp;·&nbsp; ${modeLabel} &nbsp;·&nbsp; ${gridLabel}${timerLabel}</span>
-      ${btn}
-    </div>`;
+      ? '<span style="color:#aaa;font-size:12px;font-style:italic;">Vaša soba</span>'
+      : '<button class="join-public-btn" data-gameid="' + room.id + '" style="padding:4px 12px;font-size:13px;cursor:pointer;">Pridruži se</button>';
+    return '<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 4px;border-bottom:1px solid #e0e0e0;">'
+      + '<span style="font-size:13px;">' + creatorLabel + ' &nbsp;·&nbsp; ' + modeLabel + ' &nbsp;·&nbsp; ' + gridLabel + timerLabel + '</span>'
+      + btn
+      + '</div>';
   }).join('');
-}
 
-window.joinPublicRoom = async function(gameId) {
-  await joinGameById(gameId);
-};
+  // Dodaj event listenere na gumbe (izbjegava onclick inline koji ne radi zbog CSP)
+  list.querySelectorAll('.join-public-btn').forEach(btn => {
+    btn.addEventListener('click', () => joinGameById(btn.dataset.gameid));
+  });
+}
 
 async function backToLobby() {
   clearTurnTimer();
@@ -230,6 +224,16 @@ function showCreateOptions(mode) {
   document.getElementById('create-mode-label').textContent = isCasual ? 'Casual Igra' : 'Ranked Igra';
   document.getElementById('casual-options').style.display  = isCasual ? 'block' : 'none';
   document.getElementById('ranked-info').style.display     = isCasual ? 'none'  : 'block';
+
+  // Ranked je uvijek javna — sakrij visibility opciju i resetiraj na public
+  const visEl = document.getElementById('visibility-options');
+  if (visEl) {
+    visEl.style.display = isCasual ? 'block' : 'none';
+    if (!isCasual) {
+      const pubRadio = document.querySelector('input[name="room-visibility"][value="public"]');
+      if (pubRadio) pubRadio.checked = true;
+    }
+  }
 }
 
 document.getElementById('create-casual-btn').addEventListener('click', () => showCreateOptions('casual'));
@@ -250,9 +254,8 @@ async function createGame() {
   const timer    = isRanked ? true : document.getElementById('online-timer-checkbox').checked;
 
   const visibilityInput = document.querySelector('input[name="room-visibility"]:checked');
-  const visibility = visibilityInput ? visibilityInput.value : 'private';
+  const visibility = (gameMode === 'ranked') ? 'public' : (visibilityInput ? visibilityInput.value : 'public');
 
-  // Dohvati ELO kreatora za prikaz u javnoj listi (ranked uvijek, casual/public kad je javna)
   let player1rating = null;
   try {
     const p1snap = await getDoc(doc(db, 'players', user.uid));
@@ -321,7 +324,6 @@ document.getElementById('join-game-btn').addEventListener('click', () => {
 
 document.getElementById('cancel-join-btn').addEventListener('click', () => {
   document.getElementById('join-room-form').style.display = 'none';
-  document.getElementById('room-code-input').value = '';
 });
 
 document.getElementById('confirm-join-btn').addEventListener('click', joinGame);
@@ -332,10 +334,10 @@ document.getElementById('room-code-input').addEventListener('keypress', (e) => {
 async function joinGame() {
   const code = document.getElementById('room-code-input').value.toUpperCase().trim();
   if (!code) { alert('Unesite kod sobe!'); return; }
-  await joinGameById('game_' + code, true);
+  await joinGameById('game_' + code);
 }
 
-async function joinGameById(gameId, fromCodeInput = false) {
+async function joinGameById(gameId) {
   let snap;
   try {
     snap = await getDoc(doc(db, 'games', gameId));
@@ -374,11 +376,11 @@ async function joinGameById(gameId, fromCodeInput = false) {
 
   unsubscribeGame = onSnapshot(doc(db, 'games', gameId), (snap) => {
     if (!snap.exists()) return;
-    const data = snap.data();
+    const sndata = snap.data();
     if (gameArea.style.display !== 'block') {
-      startOnlineGame(data);
+      startOnlineGame(sndata);
     } else {
-      renderGameState(data);
+      renderGameState(sndata);
     }
   });
 }
