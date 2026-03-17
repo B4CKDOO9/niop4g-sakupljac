@@ -115,8 +115,8 @@ function showOnlineLobby(user) {
   document.getElementById('join-room-form').style.display      = 'none';
 }
 
-// Deletes the game doc if we created it and nobody has joined yet
-async function deleteWaitingRoomIfOwner() {
+// Deletes own waiting room — called only when joining another game or closing the app
+async function deleteOwnWaitingRoom() {
   if (!currentGameId || myPlayerNumber !== 1) return;
   try {
     const snap = await getDoc(doc(db, 'games', currentGameId));
@@ -124,15 +124,23 @@ async function deleteWaitingRoomIfOwner() {
       await deleteDoc(doc(db, 'games', currentGameId));
     }
   } catch (_) {}
-  currentGameId = null;
 }
+
+// Delete waiting room when app is closed
+window.addEventListener('beforeunload', () => {
+  if (currentGameId && myPlayerNumber === 1) {
+    // beforeunload must be synchronous — use sendBeacon or just fire-and-forget
+    const gameRef = doc(db, 'games', currentGameId);
+    getDoc(gameRef).then(snap => {
+      if (snap.exists() && snap.data().status === 'waiting') {
+        deleteDoc(gameRef).catch(() => {});
+      }
+    }).catch(() => {});
+  }
+});
 
 async function backToLobby() {
   clearTurnTimer();
-  // If we created a room that nobody joined, delete it
-  if (currentGameId && myPlayerNumber === 1 && (!localGameData || localGameData.status === 'waiting')) {
-    await deleteWaitingRoomIfOwner();
-  }
   // Notify the other player by marking the game as 'left' and recording who left
   if (currentGameId && localGameData && (localGameData.status === 'active' || localGameData.status === 'finished')) {
     const update = { status: 'left' };
@@ -167,7 +175,7 @@ async function backToLobby() {
 }
 
 document.getElementById('sign-out-btn').addEventListener('click', async () => {
-  await deleteWaitingRoomIfOwner();
+  await deleteOwnWaitingRoom();
   backToLobby();
   onlineLobby.style.display = 'none';
   signOut(auth);
@@ -175,7 +183,7 @@ document.getElementById('sign-out-btn').addEventListener('click', async () => {
 });
 
 document.getElementById('online-back-btn').addEventListener('click', async () => {
-  await deleteWaitingRoomIfOwner();
+  await deleteOwnWaitingRoom();
   onlineLobby.style.display = 'none';
   menu.style.display = 'flex';
 });
@@ -203,10 +211,6 @@ document.getElementById('cancel-create-btn').addEventListener('click', () => {
 document.getElementById('confirm-create-btn').addEventListener('click', createGame);
 
 async function createGame() {
-  // Delete any previously created room that nobody joined
-  if (currentGameId && myPlayerNumber === 1) {
-    await deleteWaitingRoomIfOwner();
-  }
   const user     = auth.currentUser;
   const gameCode = generateGameCode();
   const gameId   = 'game_' + gameCode;
@@ -257,7 +261,10 @@ async function createGame() {
 
 document.getElementById('cancel-wait-btn').addEventListener('click', async () => {
   if (unsubscribeGame) { unsubscribeGame(); unsubscribeGame = null; }
-  await deleteWaitingRoomIfOwner();
+  if (currentGameId) {
+    try { await updateDoc(doc(db, 'games', currentGameId), { status: 'cancelled' }); } catch (_) {}
+    currentGameId = null;
+  }
   document.getElementById('waiting-room').style.display = 'none';
 });
 
@@ -298,6 +305,8 @@ async function joinGame() {
   }
 
   const user = auth.currentUser;
+  // If we had our own waiting room open, delete it before joining another game
+  await deleteOwnWaitingRoom();
   try {
     await updateDoc(doc(db, 'games', gameId), {
       player2uid:  user.uid,
