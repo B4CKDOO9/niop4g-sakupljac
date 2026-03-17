@@ -372,7 +372,7 @@ function updateStatus() {
   if (phase === "place") {
     document.getElementById("status").textContent = `${name} - Postavi točku`;
   } else {
-    document.getElementById("status").textContent = `${name} - Osjenči ćeliju`;
+    document.getElementById("status").textContent = `${name} - Osjenčaj polje`;
   }
 
   document.getElementById("status").style.color = color;
