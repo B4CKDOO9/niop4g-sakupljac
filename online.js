@@ -1,8 +1,8 @@
 import { db, auth } from './firebase-config.js';
 import { startGoogleSignIn, cancelGoogleSignIn, signOut, onAuthStateChanged } from './auth.js';
 import {
-  doc, collection, setDoc, updateDoc, getDoc, getDocs, deleteDoc,
-  onSnapshot, serverTimestamp, query, where, orderBy
+  doc, collection, setDoc, updateDoc, getDoc, getDocs,
+  onSnapshot, serverTimestamp, query, orderBy
 } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
 
 // ── Clear any persisted Firebase session (best-effort, non-blocking).
@@ -12,7 +12,6 @@ signOut(auth).catch(() => {});
 
 // ── State ─────────────────────────────────────────────────────────────────────
 let currentGameId    = null;
-let myRoomId         = null;  // game ID of a room WE created and are waiting in
 let myPlayerNumber   = null;  // 1 or 2
 let localGameData    = null;  // last Firestore snapshot
 let unsubscribeGame  = null;
@@ -22,11 +21,9 @@ let pendingSignIn    = false; // true only while user is actively signing in
 let signedInThisSession = false; // true only after user completes sign-in this launch
 let gameStarted      = false; // prevents double-calling startOnlineGame
 let waitingForDeltas = false; // Player 2 waits for Player 1 to write Elo deltas
-let deletingRoom     = false; // prevents concurrent deleteOwnWaitingRoom calls
 let onlinePlayerRatings = { 1: 1200, 2: 1200 };
 let gameMode            = null;   // 'casual' or 'ranked'
 let onlineTimerEnabled  = false;  // whether this game has a turn timer
-let unsubscribePublicRooms = null;
 const ELO_K_FACTOR = 32;  // mirror of script.js (const doesn't go on window)
 let turnTimer = null;
 let turnTimerSeconds = 30;
@@ -116,97 +113,10 @@ function showOnlineLobby(user) {
   document.getElementById('create-game-options').style.display = 'none';
   document.getElementById('waiting-room').style.display        = 'none';
   document.getElementById('join-room-form').style.display      = 'none';
-
-  subscribePublicRooms();
 }
-
-function subscribePublicRooms() {
-  if (unsubscribePublicRooms) { unsubscribePublicRooms(); unsubscribePublicRooms = null; }
-  // Server-side filter: only fetch waiting public rooms — avoids downloading every
-  // finished/active game ever played. The expiresAt TTL client-side check below
-  // handles rooms whose host crashed without deleting them.
-  const q = query(
-    collection(db, 'games'),
-    where('status', '==', 'waiting'),
-    where('visibility', '==', 'public'),
-    orderBy('createdAt', 'desc')
-  );
-  unsubscribePublicRooms = onSnapshot(q, (snap) => {
-    const rooms = [];
-    snap.forEach(d => {
-      const data = d.data();
-      const notExpired = !data.expiresAt || data.expiresAt.toDate() > new Date();
-      if (notExpired) rooms.push({ id: d.id, ...data });
-    });
-    renderPublicRooms(rooms);
-  });
-}
-
-function renderPublicRooms(rooms) {
-  const list = document.getElementById('public-rooms-list');
-  if (!list) return;
-  if (rooms.length === 0) {
-    list.innerHTML = '<div style="color:#999;font-size:13px;padding:8px;">Nema otvorenih javnih soba.</div>';
-    return;
-  }
-  list.innerHTML = rooms.map(room => {
-    const isRanked   = room.mode === 'ranked';
-    const gridLabel  = room.gridSize + '×' + room.gridSize;
-    const modeLabel  = isRanked ? 'Ranked' : 'Casual';
-    const timerLabel = room.timerEnabled ? ' · Timer' : '';
-    let creatorLabel = escHtml(room.player1name || '?');
-    if (isRanked && room.player1rating != null) {
-      creatorLabel += ' <span style="color:#888;font-size:12px;">(' + room.player1rating + ')</span>';
-    }
-    const isOwn = auth.currentUser && room.player1uid === auth.currentUser.uid;
-    const btn = isOwn
-      ? '<span style="color:#aaa;font-size:12px;font-style:italic;">Vaša soba</span>'
-      : '<button class="join-public-btn" data-gameid="' + room.id + '" style="padding:4px 12px;font-size:13px;cursor:pointer;">Pridruži se</button>';
-    return '<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 4px;border-bottom:1px solid #e0e0e0;">'
-      + '<span style="font-size:13px;">' + creatorLabel + ' &nbsp;·&nbsp; ' + modeLabel + ' &nbsp;·&nbsp; ' + gridLabel + timerLabel + '</span>'
-      + btn + '</div>';
-  }).join('');
-
-  list.querySelectorAll('.join-public-btn').forEach(btn => {
-    btn.addEventListener('click', () => joinGameById(btn.dataset.gameid));
-  });
-}
-
-// Deletes own waiting room — called only when joining another game or closing the app.
-// The deletingRoom flag prevents concurrent calls (e.g. cancel-wait-btn + beforeunload
-// firing together) from both seeing myRoomId non-null and racing to delete.
-async function deleteOwnWaitingRoom() {
-  if (!myRoomId || deletingRoom) return;
-  deletingRoom = true;
-  const gameId = myRoomId;
-  myRoomId = null;
-  try {
-    const snap = await getDoc(doc(db, 'games', gameId));
-    if (snap.exists() && snap.data().status === 'waiting' && snap.data().player1uid === auth.currentUser?.uid) {
-      await deleteDoc(doc(db, 'games', gameId));
-    }
-  } catch (_) {}
-  finally { deletingRoom = false; }
-}
-
-// Delete waiting room when app is closed.
-// NOTE: beforeunload is synchronous — async Promises (deleteDoc, ipcRenderer.invoke)
-// are almost never guaranteed to complete before the process is killed.
-// The expiresAt TTL on the room doc is the real safety net for this case;
-// this best-effort call may still succeed on graceful closes (e.g. Ctrl+Q).
-window.addEventListener('beforeunload', () => {
-  if (!myRoomId) return;
-  const gameId = myRoomId;
-  try { deleteDoc(doc(db, 'games', gameId)); } catch (_) {}
-  // NOTE: The IPC 'delete-waiting-room' fallback was removed — it sent an
-  // unauthenticated REST request that Firestore security rules would reject (403).
-  // The TTL approach in createGame() is the reliable cross-platform fallback.
-});
 
 async function backToLobby() {
   clearTurnTimer();
-  // Delete our waiting room if nobody joined yet
-  await deleteOwnWaitingRoom();
   // Notify the other player by marking the game as 'left' and recording who left
   if (currentGameId && localGameData && (localGameData.status === 'active' || localGameData.status === 'finished')) {
     const update = { status: 'left' };
@@ -218,9 +128,7 @@ async function backToLobby() {
     updateDoc(doc(db, 'games', currentGameId), update).catch(() => {});
   }
   if (unsubscribeGame) { unsubscribeGame(); unsubscribeGame = null; }
-  if (unsubscribePublicRooms) { unsubscribePublicRooms(); unsubscribePublicRooms = null; }
   currentGameId   = null;
-  myRoomId        = null;
   myPlayerNumber  = null;
   localGameData   = null;
   gameOverHandled = false;
@@ -242,17 +150,14 @@ async function backToLobby() {
   else { onlineLobby.style.display = 'none'; menu.style.display = 'flex'; }
 }
 
-document.getElementById('sign-out-btn').addEventListener('click', async () => {
-  await deleteOwnWaitingRoom();
+document.getElementById('sign-out-btn').addEventListener('click', () => {
   backToLobby();
   onlineLobby.style.display = 'none';
   signOut(auth);
   menu.style.display = 'flex';
 });
 
-document.getElementById('online-back-btn').addEventListener('click', async () => {
-  await deleteOwnWaitingRoom();
-  if (unsubscribePublicRooms) { unsubscribePublicRooms(); unsubscribePublicRooms = null; }
+document.getElementById('online-back-btn').addEventListener('click', () => {
   onlineLobby.style.display = 'none';
   menu.style.display = 'flex';
 });
@@ -268,15 +173,6 @@ function showCreateOptions(mode) {
   document.getElementById('create-mode-label').textContent = isCasual ? 'Casual Igra' : 'Ranked Igra';
   document.getElementById('casual-options').style.display  = isCasual ? 'block' : 'none';
   document.getElementById('ranked-info').style.display     = isCasual ? 'none'  : 'block';
-
-  const visEl = document.getElementById('visibility-options');
-  if (visEl) {
-    visEl.style.display = isCasual ? 'block' : 'none';
-    if (!isCasual) {
-      const pubRadio = document.querySelector('input[name="room-visibility"][value="public"]');
-      if (pubRadio) pubRadio.checked = true;
-    }
-  }
 }
 
 document.getElementById('create-casual-btn').addEventListener('click', () => showCreateOptions('casual'));
@@ -289,34 +185,20 @@ document.getElementById('cancel-create-btn').addEventListener('click', () => {
 document.getElementById('confirm-create-btn').addEventListener('click', createGame);
 
 async function createGame() {
-  const user = auth.currentUser;
-  // Delete any existing waiting room before creating a new one
-  await deleteOwnWaitingRoom();
-  if (unsubscribeGame) { unsubscribeGame(); unsubscribeGame = null; }
+  const user     = auth.currentUser;
   const gameCode = generateGameCode();
   const gameId   = 'game_' + gameCode;
   const isRanked = gameMode === 'ranked';
   const size     = isRanked ? 8 : parseInt(document.getElementById('lobby-grid-size').value);
   const timer    = isRanked ? true : document.getElementById('online-timer-checkbox').checked;
 
-  const visibilityInput = document.querySelector('input[name="room-visibility"]:checked');
-  const visibility = (gameMode === 'ranked') ? 'public' : (visibilityInput ? visibilityInput.value : 'public');
-
-  let player1rating = null;
-  try {
-    const p1snap = await getDoc(doc(db, 'players', user.uid));
-    if (p1snap.exists()) player1rating = p1snap.data().rating ?? null;
-  } catch (_) {}
-
   try {
     await setDoc(doc(db, 'games', gameId), {
       gameCode,
       mode:             gameMode,
-      visibility,
       status:           'waiting',
       player1uid:       user.uid,
       player1name:      user.displayName || user.email,
-      player1rating,
       player2uid:       null,
       player2name:      null,
       gridSize:         size,
@@ -328,8 +210,7 @@ async function createGame() {
       placementHistory: { p1: [], p2: [] },
       timeouts:         { p1: 0, p2: 0 },
       result:           null,
-      createdAt:        serverTimestamp(),
-      expiresAt:        new Date(Date.now() + 5 * 60 * 1000)  // 5-min TTL — guards against beforeunload deletes not reaching Firestore
+      createdAt:        serverTimestamp()
     });
   } catch (err) {
     alert('Greška pri stvaranju igre: ' + err.message);
@@ -337,7 +218,6 @@ async function createGame() {
   }
 
   currentGameId  = gameId;
-  myRoomId       = gameId;
   myPlayerNumber = 1;
 
   document.getElementById('create-game-options').style.display = 'none';
@@ -355,7 +235,10 @@ async function createGame() {
 
 document.getElementById('cancel-wait-btn').addEventListener('click', async () => {
   if (unsubscribeGame) { unsubscribeGame(); unsubscribeGame = null; }
-  await deleteOwnWaitingRoom();
+  if (currentGameId) {
+    try { await updateDoc(doc(db, 'games', currentGameId), { status: 'cancelled' }); } catch (_) {}
+    currentGameId = null;
+  }
   document.getElementById('waiting-room').style.display = 'none';
 });
 
@@ -365,6 +248,7 @@ document.getElementById('join-game-btn').addEventListener('click', () => {
   document.getElementById('create-game-options').style.display = 'none';
   document.getElementById('waiting-room').style.display        = 'none';
   document.getElementById('room-code-input').value = '';
+  document.getElementById('room-code-input').focus();
 });
 
 document.getElementById('cancel-join-btn').addEventListener('click', () => {
@@ -377,12 +261,10 @@ document.getElementById('room-code-input').addEventListener('keypress', (e) => {
 });
 
 async function joinGame() {
-  const code = document.getElementById('room-code-input').value.toUpperCase().trim();
+  const code   = document.getElementById('room-code-input').value.toUpperCase().trim();
   if (!code) { alert('Unesite kod sobe!'); return; }
-  await joinGameById('game_' + code);
-}
 
-async function joinGameById(gameId) {
+  const gameId = 'game_' + code;
   let snap;
   try {
     snap = await getDoc(doc(db, 'games', gameId));
@@ -396,17 +278,7 @@ async function joinGameById(gameId) {
     return;
   }
 
-  const data = snap.data();
-  if (auth.currentUser && data.player1uid === auth.currentUser.uid) {
-    alert('Ne možete se pridružiti vlastitoj sobi!');
-    return;
-  }
-
   const user = auth.currentUser;
-  // Delete our own waiting room before joining another game
-  await deleteOwnWaitingRoom();
-  if (unsubscribePublicRooms) { unsubscribePublicRooms(); unsubscribePublicRooms = null; }
-
   try {
     await updateDoc(doc(db, 'games', gameId), {
       player2uid:  user.uid,
@@ -424,11 +296,11 @@ async function joinGameById(gameId) {
 
   unsubscribeGame = onSnapshot(doc(db, 'games', gameId), (snap) => {
     if (!snap.exists()) return;
-    const sndata = snap.data();
+    const data = snap.data();
     if (gameArea.style.display !== 'block') {
-      startOnlineGame(sndata);
+      startOnlineGame(data);
     } else {
-      renderGameState(sndata);
+      renderGameState(data);
     }
   });
 }
@@ -449,7 +321,6 @@ async function startOnlineGame(data) {
   onlineLobby.style.display = 'none';
   gameArea.style.display    = 'block';
   gameOverHandled = false;
-  myRoomId           = null;  // room transitioned to active — no longer a pending waiting room; deleteOwnWaitingRoom won't touch it
   gameMode           = data.mode || 'ranked';
   onlineTimerEnabled = data.timerEnabled !== false;
 
@@ -642,13 +513,9 @@ function renderGameState(data) {
   if (data.status === 'left') {
     clearTurnTimer();
     if (data.leftBy && data.leftBy !== auth.currentUser?.uid) {
-      // The OTHER player abandoned — update our stats, delete the doc, then go to lobby
-      handleAbandon().finally(() => {
-        deleteDoc(doc(db, 'games', currentGameId)).catch(() => {});
-        backToLobby();
-      });
+      // The OTHER player abandoned — increment our games count, then go to lobby
+      handleAbandon().finally(() => backToLobby());
     } else {
-      // We are the one who left — doc cleanup handled by leaver's backToLobby
       backToLobby();
     }
     return;

@@ -86,13 +86,6 @@ ipcMain.handle('cancel-oauth-server', () => {
     cleanupOAuthServer()
 })
 
-// NOTE: The 'delete-waiting-room' IPC handler was removed.
-// It sent a Firestore REST DELETE without an Authorization header, which is
-// rejected by Firestore security rules (403 PERMISSION_DENIED).
-// Room cleanup is now handled by: (a) deleteOwnWaitingRoom() in online.js
-// (called on cancel / back-to-lobby), and (b) the expiresAt TTL field on
-// each waiting room doc, which the client filters out on read.
-
 const createWindow = () => {
     win = new BrowserWindow({
         //fullscreen: true,

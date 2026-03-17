@@ -46,14 +46,6 @@
 
             <div id="create-game-options" style="display:none; margin-top:12px;">
                 <p id="create-mode-label" style="font-weight:bold; margin-bottom:8px;"></p>
-                <div id="visibility-options" style="margin-bottom:10px;">
-                    <label style="font-size:14px; margin-right:15px; cursor:pointer;">
-                        <input type="radio" name="room-visibility" value="public" checked /> Javna soba
-                    </label>
-                    <label style="font-size:14px; cursor:pointer;">
-                        <input type="radio" name="room-visibility" value="private" /> Privatna soba
-                    </label>
-                </div>
                 <div id="casual-options">
                     <label for="lobby-grid-size" style="display:block; margin-bottom:5px;">Veličina polja:</label>
                     <select id="lobby-grid-size" style="width:150px; margin-bottom:10px; padding:5px;">
@@ -81,12 +73,9 @@
             </div>
 
             <div id="join-room-form" style="display:none; margin-top:12px;">
-                <h3 style="margin:0 0 8px 0; font-size:15px;">Javne sobe</h3>
-                <div id="public-rooms-list" style="max-height:220px; overflow-y:auto; border:1px solid #ccc; padding:6px; min-width:300px; text-align:left; margin-bottom:12px; background:#fafafa;"></div>
-                <p style="margin:8px 0 4px; font-size:13px; color:#555;">Ili unesite kod privatne sobe:</p>
                 <input type="text" id="room-code-input" placeholder="Kod sobe" maxlength="6"
                     style="text-transform:uppercase; width:150px; padding:5px; display:block; margin-bottom:8px;" />
-                <button id="confirm-join-btn">Pridruži se kodom</button>
+                <button id="confirm-join-btn">Pridruži se</button>
                 <button id="cancel-join-btn">Odustani</button>
             </div>
         </div>
