@@ -166,8 +166,7 @@ function renderPublicRooms(rooms) {
 // Deletes own waiting room — called only when joining another game or closing the app
 async function deleteOwnWaitingRoom() {
   if (!currentGameId) return;
-  const gameId = currentGameId; // snapshot before any async reset
-  currentGameId = null;
+  const gameId = currentGameId;
   try {
     const snap = await getDoc(doc(db, 'games', gameId));
     if (snap.exists() && snap.data().status === 'waiting' && snap.data().player1uid === auth.currentUser?.uid) {
@@ -181,14 +180,19 @@ async function deleteOwnWaitingRoom() {
 window.addEventListener('beforeunload', () => {
   if (!currentGameId) return;
   const gameId = currentGameId;
+  // Fire-and-forget — Electron gives enough time before closing
+  try { deleteDoc(doc(db, 'games', gameId)); } catch (_) {}
   if (typeof require !== 'undefined') {
     try { require('electron').ipcRenderer.invoke('delete-waiting-room', gameId); } catch (_) {}
   }
-  try { deleteDoc(doc(db, 'games', gameId)); } catch (_) {}
 });
 
 async function backToLobby() {
   clearTurnTimer();
+  // If we created a room that nobody joined yet, delete it
+  if (currentGameId && (!localGameData || localGameData.status === 'waiting')) {
+    await deleteOwnWaitingRoom();
+  }
   // Notify the other player by marking the game as 'left' and recording who left
   if (currentGameId && localGameData && (localGameData.status === 'active' || localGameData.status === 'finished')) {
     const update = { status: 'left' };
@@ -270,7 +274,14 @@ document.getElementById('cancel-create-btn').addEventListener('click', () => {
 document.getElementById('confirm-create-btn').addEventListener('click', createGame);
 
 async function createGame() {
-  const user     = auth.currentUser;
+  const user = auth.currentUser;
+  // Prevent creating multiple rooms — delete existing waiting room first
+  if (currentGameId) {
+    await deleteOwnWaitingRoom();
+    if (unsubscribeGame) { unsubscribeGame(); unsubscribeGame = null; }
+    currentGameId  = null;
+    myPlayerNumber = null;
+  }
   const gameCode = generateGameCode();
   const gameId   = 'game_' + gameCode;
   const isRanked = gameMode === 'ranked';
