@@ -12,6 +12,7 @@ signOut(auth).catch(() => {});
 
 // ── State ─────────────────────────────────────────────────────────────────────
 let currentGameId    = null;
+let myRoomId         = null;  // game ID of a room WE created and are waiting in
 let myPlayerNumber   = null;  // 1 or 2
 let localGameData    = null;  // last Firestore snapshot
 let unsubscribeGame  = null;
@@ -165,8 +166,9 @@ function renderPublicRooms(rooms) {
 
 // Deletes own waiting room — called only when joining another game or closing the app
 async function deleteOwnWaitingRoom() {
-  if (!currentGameId) return;
-  const gameId = currentGameId;
+  if (!myRoomId) return;
+  const gameId = myRoomId;
+  myRoomId = null;
   try {
     const snap = await getDoc(doc(db, 'games', gameId));
     if (snap.exists() && snap.data().status === 'waiting' && snap.data().player1uid === auth.currentUser?.uid) {
@@ -178,9 +180,8 @@ async function deleteOwnWaitingRoom() {
 // Delete waiting room when app is closed
 // Use both IPC (reliable, waits for response) and direct deleteDoc (fallback)
 window.addEventListener('beforeunload', () => {
-  if (!currentGameId) return;
-  const gameId = currentGameId;
-  // Fire-and-forget — Electron gives enough time before closing
+  if (!myRoomId) return;
+  const gameId = myRoomId;
   try { deleteDoc(doc(db, 'games', gameId)); } catch (_) {}
   if (typeof require !== 'undefined') {
     try { require('electron').ipcRenderer.invoke('delete-waiting-room', gameId); } catch (_) {}
@@ -189,10 +190,8 @@ window.addEventListener('beforeunload', () => {
 
 async function backToLobby() {
   clearTurnTimer();
-  // If we created a room that nobody joined yet, delete it
-  if (currentGameId && (!localGameData || localGameData.status === 'waiting')) {
-    await deleteOwnWaitingRoom();
-  }
+  // Delete our waiting room if nobody joined yet
+  await deleteOwnWaitingRoom();
   // Notify the other player by marking the game as 'left' and recording who left
   if (currentGameId && localGameData && (localGameData.status === 'active' || localGameData.status === 'finished')) {
     const update = { status: 'left' };
@@ -206,6 +205,7 @@ async function backToLobby() {
   if (unsubscribeGame) { unsubscribeGame(); unsubscribeGame = null; }
   if (unsubscribePublicRooms) { unsubscribePublicRooms(); unsubscribePublicRooms = null; }
   currentGameId   = null;
+  myRoomId        = null;
   myPlayerNumber  = null;
   localGameData   = null;
   gameOverHandled = false;
@@ -275,13 +275,9 @@ document.getElementById('confirm-create-btn').addEventListener('click', createGa
 
 async function createGame() {
   const user = auth.currentUser;
-  // Prevent creating multiple rooms — delete existing waiting room first
-  if (currentGameId) {
-    await deleteOwnWaitingRoom();
-    if (unsubscribeGame) { unsubscribeGame(); unsubscribeGame = null; }
-    currentGameId  = null;
-    myPlayerNumber = null;
-  }
+  // Delete any existing waiting room before creating a new one
+  await deleteOwnWaitingRoom();
+  if (unsubscribeGame) { unsubscribeGame(); unsubscribeGame = null; }
   const gameCode = generateGameCode();
   const gameId   = 'game_' + gameCode;
   const isRanked = gameMode === 'ranked';
@@ -325,6 +321,7 @@ async function createGame() {
   }
 
   currentGameId  = gameId;
+  myRoomId       = gameId;
   myPlayerNumber = 1;
 
   document.getElementById('create-game-options').style.display = 'none';
@@ -436,6 +433,7 @@ async function startOnlineGame(data) {
   onlineLobby.style.display = 'none';
   gameArea.style.display    = 'block';
   gameOverHandled = false;
+  myRoomId           = null;  // room is now active, no longer our waiting room
   gameMode           = data.mode || 'ranked';
   onlineTimerEnabled = data.timerEnabled !== false;
 
