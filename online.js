@@ -22,6 +22,7 @@ let pendingSignIn    = false; // true only while user is actively signing in
 let signedInThisSession = false; // true only after user completes sign-in this launch
 let gameStarted      = false; // prevents double-calling startOnlineGame
 let waitingForDeltas = false; // Player 2 waits for Player 1 to write Elo deltas
+let deletingRoom     = false; // prevents concurrent deleteOwnWaitingRoom calls
 let onlinePlayerRatings = { 1: 1200, 2: 1200 };
 let gameMode            = null;   // 'casual' or 'ranked'
 let onlineTimerEnabled  = false;  // whether this game has a turn timer
@@ -126,7 +127,8 @@ function subscribePublicRooms() {
     const rooms = [];
     snap.forEach(d => {
       const data = d.data();
-      if (data.visibility === 'public' && data.status === 'waiting') {
+      const notExpired = !data.expiresAt || data.expiresAt.toDate() > new Date();
+      if (data.visibility === 'public' && data.status === 'waiting' && notExpired) {
         rooms.push({ id: d.id, ...data });
       }
     });
@@ -164,9 +166,12 @@ function renderPublicRooms(rooms) {
   });
 }
 
-// Deletes own waiting room — called only when joining another game or closing the app
+// Deletes own waiting room — called only when joining another game or closing the app.
+// The deletingRoom flag prevents concurrent calls (e.g. cancel-wait-btn + beforeunload
+// firing together) from both seeing myRoomId non-null and racing to delete.
 async function deleteOwnWaitingRoom() {
-  if (!myRoomId) return;
+  if (!myRoomId || deletingRoom) return;
+  deletingRoom = true;
   const gameId = myRoomId;
   myRoomId = null;
   try {
@@ -175,17 +180,21 @@ async function deleteOwnWaitingRoom() {
       await deleteDoc(doc(db, 'games', gameId));
     }
   } catch (_) {}
+  finally { deletingRoom = false; }
 }
 
-// Delete waiting room when app is closed
-// Use both IPC (reliable, waits for response) and direct deleteDoc (fallback)
+// Delete waiting room when app is closed.
+// NOTE: beforeunload is synchronous — async Promises (deleteDoc, ipcRenderer.invoke)
+// are almost never guaranteed to complete before the process is killed.
+// The expiresAt TTL on the room doc is the real safety net for this case;
+// this best-effort call may still succeed on graceful closes (e.g. Ctrl+Q).
 window.addEventListener('beforeunload', () => {
   if (!myRoomId) return;
   const gameId = myRoomId;
   try { deleteDoc(doc(db, 'games', gameId)); } catch (_) {}
-  if (typeof require !== 'undefined') {
-    try { require('electron').ipcRenderer.invoke('delete-waiting-room', gameId); } catch (_) {}
-  }
+  // NOTE: The IPC 'delete-waiting-room' fallback was removed — it sent an
+  // unauthenticated REST request that Firestore security rules would reject (403).
+  // The TTL approach in createGame() is the reliable cross-platform fallback.
 });
 
 async function backToLobby() {
@@ -313,7 +322,8 @@ async function createGame() {
       placementHistory: { p1: [], p2: [] },
       timeouts:         { p1: 0, p2: 0 },
       result:           null,
-      createdAt:        serverTimestamp()
+      createdAt:        serverTimestamp(),
+      expiresAt:        new Date(Date.now() + 5 * 60 * 1000)  // 5-min TTL — guards against beforeunload deletes not reaching Firestore
     });
   } catch (err) {
     alert('Greška pri stvaranju igre: ' + err.message);
@@ -433,7 +443,7 @@ async function startOnlineGame(data) {
   onlineLobby.style.display = 'none';
   gameArea.style.display    = 'block';
   gameOverHandled = false;
-  myRoomId           = null;  // room is now active, no longer our waiting room
+  myRoomId           = null;  // room transitioned to active — no longer a pending waiting room; deleteOwnWaitingRoom won't touch it
   gameMode           = data.mode || 'ranked';
   onlineTimerEnabled = data.timerEnabled !== false;
 

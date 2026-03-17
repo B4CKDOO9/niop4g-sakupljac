@@ -86,19 +86,12 @@ ipcMain.handle('cancel-oauth-server', () => {
     cleanupOAuthServer()
 })
 
-// Renderer sends this just before window closes to delete a waiting room
-ipcMain.handle('delete-waiting-room', async (_event, gameId) => {
-    // Fire a Firestore REST delete — no Firebase SDK in main process
-    const { net } = require('electron')
-    const projectId = 'niop4g-sakupljac'
-    const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/games/${gameId}`
-    return new Promise((resolve) => {
-        const req = net.request({ method: 'DELETE', url })
-        req.on('response', () => resolve())
-        req.on('error', () => resolve())
-        req.end()
-    })
-})
+// NOTE: The 'delete-waiting-room' IPC handler was removed.
+// It sent a Firestore REST DELETE without an Authorization header, which is
+// rejected by Firestore security rules (403 PERMISSION_DENIED).
+// Room cleanup is now handled by: (a) deleteOwnWaitingRoom() in online.js
+// (called on cancel / back-to-lobby), and (b) the expiresAt TTL field on
+// each waiting room doc, which the client filters out on read.
 
 const createWindow = () => {
     win = new BrowserWindow({
