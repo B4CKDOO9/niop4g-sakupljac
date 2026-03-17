@@ -86,6 +86,20 @@ ipcMain.handle('cancel-oauth-server', () => {
     cleanupOAuthServer()
 })
 
+// Renderer sends this just before window closes to delete a waiting room
+ipcMain.handle('delete-waiting-room', async (_event, gameId) => {
+    // Fire a Firestore REST delete — no Firebase SDK in main process
+    const { net } = require('electron')
+    const projectId = 'niop4g-sakupljac'
+    const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/games/${gameId}`
+    return new Promise((resolve) => {
+        const req = net.request({ method: 'DELETE', url })
+        req.on('response', () => resolve())
+        req.on('error', () => resolve())
+        req.end()
+    })
+})
+
 const createWindow = () => {
     win = new BrowserWindow({
         //fullscreen: true,

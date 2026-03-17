@@ -175,16 +175,16 @@ async function deleteOwnWaitingRoom() {
 }
 
 // Delete waiting room when app is closed
+// Use both IPC (reliable, waits for response) and direct deleteDoc (fallback)
 window.addEventListener('beforeunload', () => {
-  if (currentGameId && myPlayerNumber === 1) {
-    // beforeunload must be synchronous — use sendBeacon or just fire-and-forget
-    const gameRef = doc(db, 'games', currentGameId);
-    getDoc(gameRef).then(snap => {
-      if (snap.exists() && snap.data().status === 'waiting') {
-        deleteDoc(gameRef).catch(() => {});
-      }
-    }).catch(() => {});
+  if (!currentGameId || myPlayerNumber !== 1) return;
+  const gameId = currentGameId;
+  // IPC call to main process which does a synchronous REST DELETE
+  if (typeof require !== 'undefined') {
+    try { require('electron').ipcRenderer.invoke('delete-waiting-room', gameId); } catch (_) {}
   }
+  // Direct Firestore delete as fallback
+  try { deleteDoc(doc(db, 'games', gameId)); } catch (_) {}
 });
 
 async function backToLobby() {
@@ -331,10 +331,7 @@ async function createGame() {
 
 document.getElementById('cancel-wait-btn').addEventListener('click', async () => {
   if (unsubscribeGame) { unsubscribeGame(); unsubscribeGame = null; }
-  if (currentGameId) {
-    try { await updateDoc(doc(db, 'games', currentGameId), { status: 'cancelled' }); } catch (_) {}
-    currentGameId = null;
-  }
+  await deleteOwnWaitingRoom();
   document.getElementById('waiting-room').style.display = 'none';
 });
 
