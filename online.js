@@ -165,11 +165,13 @@ function renderPublicRooms(rooms) {
 
 // Deletes own waiting room — called only when joining another game or closing the app
 async function deleteOwnWaitingRoom() {
-  if (!currentGameId || myPlayerNumber !== 1) return;
+  if (!currentGameId) return;
+  const gameId = currentGameId; // snapshot before any async reset
+  currentGameId = null;
   try {
-    const snap = await getDoc(doc(db, 'games', currentGameId));
-    if (snap.exists() && snap.data().status === 'waiting') {
-      await deleteDoc(doc(db, 'games', currentGameId));
+    const snap = await getDoc(doc(db, 'games', gameId));
+    if (snap.exists() && snap.data().status === 'waiting' && snap.data().player1uid === auth.currentUser?.uid) {
+      await deleteDoc(doc(db, 'games', gameId));
     }
   } catch (_) {}
 }
@@ -177,13 +179,11 @@ async function deleteOwnWaitingRoom() {
 // Delete waiting room when app is closed
 // Use both IPC (reliable, waits for response) and direct deleteDoc (fallback)
 window.addEventListener('beforeunload', () => {
-  if (!currentGameId || myPlayerNumber !== 1) return;
+  if (!currentGameId) return;
   const gameId = currentGameId;
-  // IPC call to main process which does a synchronous REST DELETE
   if (typeof require !== 'undefined') {
     try { require('electron').ipcRenderer.invoke('delete-waiting-room', gameId); } catch (_) {}
   }
-  // Direct Firestore delete as fallback
   try { deleteDoc(doc(db, 'games', gameId)); } catch (_) {}
 });
 
