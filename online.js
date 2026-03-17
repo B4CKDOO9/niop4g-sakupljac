@@ -24,6 +24,7 @@ let waitingForDeltas = false; // Player 2 waits for Player 1 to write Elo deltas
 let onlinePlayerRatings = { 1: 1200, 2: 1200 };
 let gameMode            = null;   // 'casual' or 'ranked'
 let onlineTimerEnabled  = false;  // whether this game has a turn timer
+let unsubscribePublicRooms = null;
 const ELO_K_FACTOR = 32;  // mirror of script.js (const doesn't go on window)
 let turnTimer = null;
 let turnTimerSeconds = 30;
@@ -113,7 +114,62 @@ function showOnlineLobby(user) {
   document.getElementById('create-game-options').style.display = 'none';
   document.getElementById('waiting-room').style.display        = 'none';
   document.getElementById('join-room-form').style.display      = 'none';
+
+  subscribePublicRooms();
 }
+
+function subscribePublicRooms() {
+  if (unsubscribePublicRooms) { unsubscribePublicRooms(); unsubscribePublicRooms = null; }
+
+  const q = query(collection(db, 'games'), orderBy('createdAt', 'desc'));
+  unsubscribePublicRooms = onSnapshot(q, (snap) => {
+    const rooms = [];
+    snap.forEach(d => {
+      const data = d.data();
+      if (data.visibility === 'public' && data.status === 'waiting') {
+        rooms.push({ id: d.id, ...data });
+      }
+    });
+    renderPublicRooms(rooms);
+  });
+}
+
+function renderPublicRooms(rooms) {
+  const list = document.getElementById('public-rooms-list');
+  if (!list) return;
+
+  if (rooms.length === 0) {
+    list.innerHTML = '<div style="color:#999; font-size:13px; padding:8px;">Nema otvorenih javnih soba.</div>';
+    return;
+  }
+
+  list.innerHTML = rooms.map(room => {
+    const isRanked  = room.mode === 'ranked';
+    const gridLabel = `${room.gridSize}×${room.gridSize}`;
+    const modeLabel = isRanked ? 'Ranked' : 'Casual';
+    const timerLabel = room.timerEnabled ? ' · Timer' : '';
+
+    let creatorLabel = escHtml(room.player1name || '?');
+    if (isRanked && room.player1rating != null) {
+      creatorLabel += ` <span style="color:#888; font-size:12px;">(${room.player1rating})</span>`;
+    }
+
+    const isOwn = auth.currentUser && room.player1uid === auth.currentUser.uid;
+    const btn = isOwn
+      ? `<span style="color:#aaa; font-size:12px; font-style:italic;">Vaša soba</span>`
+      : `<button onclick="window.joinPublicRoom('${room.id}')" style="padding:4px 12px; font-size:13px; cursor:pointer;">Pridruži se</button>`;
+
+    return `<div style="display:flex; justify-content:space-between; align-items:center;
+                        padding:7px 4px; border-bottom:1px solid #e0e0e0;">
+      <span style="font-size:13px;">${creatorLabel} &nbsp;·&nbsp; ${modeLabel} &nbsp;·&nbsp; ${gridLabel}${timerLabel}</span>
+      ${btn}
+    </div>`;
+  }).join('');
+}
+
+window.joinPublicRoom = async function(gameId) {
+  await joinGameById(gameId);
+};
 
 async function backToLobby() {
   clearTurnTimer();
@@ -128,6 +184,7 @@ async function backToLobby() {
     updateDoc(doc(db, 'games', currentGameId), update).catch(() => {});
   }
   if (unsubscribeGame) { unsubscribeGame(); unsubscribeGame = null; }
+  if (unsubscribePublicRooms) { unsubscribePublicRooms(); unsubscribePublicRooms = null; }
   currentGameId   = null;
   myPlayerNumber  = null;
   localGameData   = null;
@@ -192,13 +249,25 @@ async function createGame() {
   const size     = isRanked ? 8 : parseInt(document.getElementById('lobby-grid-size').value);
   const timer    = isRanked ? true : document.getElementById('online-timer-checkbox').checked;
 
+  const visibilityInput = document.querySelector('input[name="room-visibility"]:checked');
+  const visibility = visibilityInput ? visibilityInput.value : 'private';
+
+  // Dohvati ELO kreatora za prikaz u javnoj listi (ranked uvijek, casual/public kad je javna)
+  let player1rating = null;
+  try {
+    const p1snap = await getDoc(doc(db, 'players', user.uid));
+    if (p1snap.exists()) player1rating = p1snap.data().rating ?? null;
+  } catch (_) {}
+
   try {
     await setDoc(doc(db, 'games', gameId), {
       gameCode,
       mode:             gameMode,
+      visibility,
       status:           'waiting',
       player1uid:       user.uid,
       player1name:      user.displayName || user.email,
+      player1rating,
       player2uid:       null,
       player2name:      null,
       gridSize:         size,
@@ -248,11 +317,11 @@ document.getElementById('join-game-btn').addEventListener('click', () => {
   document.getElementById('create-game-options').style.display = 'none';
   document.getElementById('waiting-room').style.display        = 'none';
   document.getElementById('room-code-input').value = '';
-  document.getElementById('room-code-input').focus();
 });
 
 document.getElementById('cancel-join-btn').addEventListener('click', () => {
   document.getElementById('join-room-form').style.display = 'none';
+  document.getElementById('room-code-input').value = '';
 });
 
 document.getElementById('confirm-join-btn').addEventListener('click', joinGame);
@@ -261,10 +330,12 @@ document.getElementById('room-code-input').addEventListener('keypress', (e) => {
 });
 
 async function joinGame() {
-  const code   = document.getElementById('room-code-input').value.toUpperCase().trim();
+  const code = document.getElementById('room-code-input').value.toUpperCase().trim();
   if (!code) { alert('Unesite kod sobe!'); return; }
+  await joinGameById('game_' + code, true);
+}
 
-  const gameId = 'game_' + code;
+async function joinGameById(gameId, fromCodeInput = false) {
   let snap;
   try {
     snap = await getDoc(doc(db, 'games', gameId));
@@ -275,6 +346,12 @@ async function joinGame() {
 
   if (!snap.exists() || snap.data().status !== 'waiting') {
     alert('Soba nije pronađena ili je igra već počela.');
+    return;
+  }
+
+  const data = snap.data();
+  if (auth.currentUser && data.player1uid === auth.currentUser.uid) {
+    alert('Ne možete se pridružiti vlastitoj sobi!');
     return;
   }
 
@@ -293,6 +370,7 @@ async function joinGame() {
   currentGameId  = gameId;
   myPlayerNumber = 2;
   document.getElementById('join-room-form').style.display = 'none';
+  if (unsubscribePublicRooms) { unsubscribePublicRooms(); unsubscribePublicRooms = null; }
 
   unsubscribeGame = onSnapshot(doc(db, 'games', gameId), (snap) => {
     if (!snap.exists()) return;
