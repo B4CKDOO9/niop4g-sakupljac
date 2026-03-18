@@ -167,30 +167,6 @@ button {
     color: #333;
 }
 
-/* Lista javnih soba */
-#public-room-list { text-align: left; }
-
-.public-room-item {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 6px 8px;
-    border-bottom: 1px solid #eee;
-    gap: 8px;
-}
-.public-room-item:last-child { border-bottom: none; }
-.public-room-item:hover { background-color: #f5f5f5; }
-
-.room-creator {
-    font-weight: bold;
-    flex: 1;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-.room-info { color: #666; font-size: 13px; flex-shrink: 0; }
-.room-join-btn { padding: 4px 12px; font-size: 13px; cursor: pointer; flex-shrink: 0; }
-
 /* Responzivnost */
 @media (max-width: 650px) {
     #grid {

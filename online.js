@@ -1,8 +1,8 @@
 import { db, auth } from './firebase-config.js';
 import { startGoogleSignIn, cancelGoogleSignIn, signOut, onAuthStateChanged } from './auth.js';
 import {
-  doc, collection, setDoc, updateDoc, getDoc, getDocs, deleteDoc,
-  onSnapshot, serverTimestamp, query, orderBy, where
+  doc, collection, setDoc, updateDoc, getDoc, getDocs,
+  onSnapshot, serverTimestamp, query, orderBy
 } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
 
 // ── Clear any persisted Firebase session (best-effort, non-blocking).
@@ -29,8 +29,6 @@ let turnTimer = null;
 let turnTimerSeconds = 30;
 const TURN_TIME_LIMIT = 30;
 const MAX_CONSECUTIVE_TIMEOUTS = 3;
-let unsubscribeRoomList = null;  // onSnapshot listener for public room list
-let myWaitingGameId     = null;  // tracks if this player already has a waiting room
 
 // ── DOM shortcuts ─────────────────────────────────────────────────────────────
 const menu         = document.getElementById('menu');
@@ -115,22 +113,10 @@ function showOnlineLobby(user) {
   document.getElementById('create-game-options').style.display = 'none';
   document.getElementById('waiting-room').style.display        = 'none';
   document.getElementById('join-room-form').style.display      = 'none';
-  stopRoomListListener();
 }
-
-window.addEventListener('beforeunload', () => {
-  if (myWaitingGameId) {
-    try { deleteDoc(doc(db, 'games', myWaitingGameId)); } catch (_) {}
-  }
-});
 
 async function backToLobby() {
   clearTurnTimer();
-  // Delete our waiting room if nobody joined
-  if (myWaitingGameId) {
-    try { await deleteDoc(doc(db, 'games', myWaitingGameId)); } catch (_) {}
-    myWaitingGameId = null;
-  }
   // Notify the other player by marking the game as 'left' and recording who left
   if (currentGameId && localGameData && (localGameData.status === 'active' || localGameData.status === 'finished')) {
     const update = { status: 'left' };
@@ -142,7 +128,6 @@ async function backToLobby() {
     updateDoc(doc(db, 'games', currentGameId), update).catch(() => {});
   }
   if (unsubscribeGame) { unsubscribeGame(); unsubscribeGame = null; }
-  stopRoomListListener();
   currentGameId   = null;
   myPlayerNumber  = null;
   localGameData   = null;
@@ -151,7 +136,6 @@ async function backToLobby() {
   isWriting          = false;
   gameMode           = null;
   onlineTimerEnabled = false;
-  myWaitingGameId    = null;
   window.onlineMode = false;
   window.onlineHandleCellClick = undefined;
   window.onBackToMenuHook      = undefined;
@@ -166,32 +150,20 @@ async function backToLobby() {
   else { onlineLobby.style.display = 'none'; menu.style.display = 'flex'; }
 }
 
-document.getElementById('sign-out-btn').addEventListener('click', async () => {
-  if (myWaitingGameId) {
-    try { await deleteDoc(doc(db, 'games', myWaitingGameId)); } catch (_) {}
-    myWaitingGameId = null;
-  }
-  stopRoomListListener();
+document.getElementById('sign-out-btn').addEventListener('click', () => {
   backToLobby();
   onlineLobby.style.display = 'none';
   signOut(auth);
   menu.style.display = 'flex';
 });
 
-document.getElementById('online-back-btn').addEventListener('click', async () => {
-  if (myWaitingGameId) {
-    try { await deleteDoc(doc(db, 'games', myWaitingGameId)); } catch (_) {}
-    myWaitingGameId = null;
-  }
-  if (unsubscribeGame) { unsubscribeGame(); unsubscribeGame = null; }
-  stopRoomListListener();
+document.getElementById('online-back-btn').addEventListener('click', () => {
   onlineLobby.style.display = 'none';
   menu.style.display = 'flex';
 });
 
 // ── Create game ───────────────────────────────────────────────────────────────
 function showCreateOptions(mode) {
-  stopRoomListListener();
   gameMode = mode;
   document.getElementById('create-game-options').style.display = 'block';
   document.getElementById('waiting-room').style.display        = 'none';
@@ -201,26 +173,10 @@ function showCreateOptions(mode) {
   document.getElementById('create-mode-label').textContent = isCasual ? 'Casual Igra' : 'Ranked Igra';
   document.getElementById('casual-options').style.display  = isCasual ? 'block' : 'none';
   document.getElementById('ranked-info').style.display     = isCasual ? 'none'  : 'block';
-
-  // Private rooms cannot be ranked
-  const privateRadio = document.querySelector('input[name="room-visibility"][value="private"]');
-  const publicRadio  = document.querySelector('input[name="room-visibility"][value="public"]');
-  if (mode === 'ranked') {
-    publicRadio.checked = true;
-    privateRadio.disabled = true;
-    privateRadio.parentElement.style.opacity = '0.5';
-  } else {
-    privateRadio.disabled = false;
-    privateRadio.parentElement.style.opacity = '1';
-  }
 }
 
-document.getElementById('create-casual-btn').addEventListener('click', () => {
-  showCreateOptions('casual');
-});
-document.getElementById('create-ranked-btn').addEventListener('click', () => {
-  showCreateOptions('ranked');
-});
+document.getElementById('create-casual-btn').addEventListener('click', () => showCreateOptions('casual'));
+document.getElementById('create-ranked-btn').addEventListener('click', () => showCreateOptions('ranked'));
 
 document.getElementById('cancel-create-btn').addEventListener('click', () => {
   document.getElementById('create-game-options').style.display = 'none';
@@ -229,44 +185,20 @@ document.getElementById('cancel-create-btn').addEventListener('click', () => {
 document.getElementById('confirm-create-btn').addEventListener('click', createGame);
 
 async function createGame() {
-  const user       = auth.currentUser;
-  const gameCode   = generateGameCode();
-  const gameId     = 'game_' + gameCode;
-  const isRanked   = gameMode === 'ranked';
-  const size       = isRanked ? 8 : parseInt(document.getElementById('lobby-grid-size').value);
-  const timer      = isRanked ? true : document.getElementById('online-timer-checkbox').checked;
-  const visibility = document.querySelector('input[name="room-visibility"]:checked').value;
-
-  // Defensive: private + ranked not allowed
-  if (isRanked && visibility === 'private') {
-    alert('Privatne sobe ne mogu biti ranked!');
-    return;
-  }
-
-  // Delete any previous waiting room this player created
-  if (myWaitingGameId) {
-    try { await deleteDoc(doc(db, 'games', myWaitingGameId)); } catch (_) {}
-    myWaitingGameId = null;
-  }
-
-  // Fetch player rating for ranked rooms (shown in room list)
-  let player1rating = null;
-  if (isRanked) {
-    try {
-      const pSnap = await getDoc(doc(db, 'players', user.uid));
-      player1rating = pSnap.exists() ? (pSnap.data().rating || 1200) : 1200;
-    } catch (_) { player1rating = 1200; }
-  }
+  const user     = auth.currentUser;
+  const gameCode = generateGameCode();
+  const gameId   = 'game_' + gameCode;
+  const isRanked = gameMode === 'ranked';
+  const size     = isRanked ? 8 : parseInt(document.getElementById('lobby-grid-size').value);
+  const timer    = isRanked ? true : document.getElementById('online-timer-checkbox').checked;
 
   try {
     await setDoc(doc(db, 'games', gameId), {
       gameCode,
       mode:             gameMode,
-      visibility,
       status:           'waiting',
       player1uid:       user.uid,
       player1name:      user.displayName || user.email,
-      player1rating,
       player2uid:       null,
       player2name:      null,
       gridSize:         size,
@@ -287,36 +219,25 @@ async function createGame() {
 
   currentGameId  = gameId;
   myPlayerNumber = 1;
-  myWaitingGameId = gameId;
 
   document.getElementById('create-game-options').style.display = 'none';
+  document.getElementById('room-code-display').textContent     = gameCode;
   document.getElementById('waiting-room').style.display        = 'block';
-
-  // Show room code only for private rooms
-  if (visibility === 'private') {
-    document.getElementById('waiting-room-message').textContent = 'Čekanje protivnika...';
-    document.getElementById('waiting-room-code-section').style.display = 'block';
-    document.getElementById('room-code-display').textContent = gameCode;
-  } else {
-    document.getElementById('waiting-room-message').textContent = 'Čekanje protivnika... Soba je javna.';
-    document.getElementById('waiting-room-code-section').style.display = 'none';
-  }
 
   // Wait for player 2 to join
   unsubscribeGame = onSnapshot(doc(db, 'games', gameId), (snap) => {
     if (!snap.exists()) return;
     const data = snap.data();
-    if (data.status === 'active') { myWaitingGameId = null; startOnlineGame(data); }
-    if (data.status === 'cancelled') { myWaitingGameId = null; backToLobby(); }
+    if (data.status === 'active') startOnlineGame(data);
+    if (data.status === 'cancelled') backToLobby();
   });
 }
 
 document.getElementById('cancel-wait-btn').addEventListener('click', async () => {
   if (unsubscribeGame) { unsubscribeGame(); unsubscribeGame = null; }
   if (currentGameId) {
-    try { await deleteDoc(doc(db, 'games', currentGameId)); } catch (_) {}
+    try { await updateDoc(doc(db, 'games', currentGameId), { status: 'cancelled' }); } catch (_) {}
     currentGameId = null;
-    myWaitingGameId = null;
   }
   document.getElementById('waiting-room').style.display = 'none';
 });
@@ -327,29 +248,23 @@ document.getElementById('join-game-btn').addEventListener('click', () => {
   document.getElementById('create-game-options').style.display = 'none';
   document.getElementById('waiting-room').style.display        = 'none';
   document.getElementById('room-code-input').value = '';
-  startRoomListListener();
+  document.getElementById('room-code-input').focus();
 });
 
 document.getElementById('cancel-join-btn').addEventListener('click', () => {
   document.getElementById('join-room-form').style.display = 'none';
-  stopRoomListListener();
 });
 
-document.getElementById('confirm-join-btn').addEventListener('click', () => joinGame());
+document.getElementById('confirm-join-btn').addEventListener('click', joinGame);
 document.getElementById('room-code-input').addEventListener('keypress', (e) => {
   if (e.key === 'Enter') joinGame();
 });
 
-async function joinGame(gameIdOverride) {
-  let gameId;
-  if (gameIdOverride) {
-    gameId = gameIdOverride;
-  } else {
-    const code = document.getElementById('room-code-input').value.toUpperCase().trim();
-    if (!code) { alert('Unesite kod sobe!'); return; }
-    gameId = 'game_' + code;
-  }
+async function joinGame() {
+  const code   = document.getElementById('room-code-input').value.toUpperCase().trim();
+  if (!code) { alert('Unesite kod sobe!'); return; }
 
+  const gameId = 'game_' + code;
   let snap;
   try {
     snap = await getDoc(doc(db, 'games', gameId));
@@ -363,13 +278,7 @@ async function joinGame(gameIdOverride) {
     return;
   }
 
-  // Prevent joining own room
   const user = auth.currentUser;
-  if (snap.data().player1uid === user.uid) {
-    alert('Ne možete se pridružiti vlastitoj sobi!');
-    return;
-  }
-
   try {
     await updateDoc(doc(db, 'games', gameId), {
       player2uid:  user.uid,
@@ -381,7 +290,6 @@ async function joinGame(gameIdOverride) {
     return;
   }
 
-  stopRoomListListener();
   currentGameId  = gameId;
   myPlayerNumber = 2;
   document.getElementById('join-room-form').style.display = 'none';
@@ -403,76 +311,6 @@ function generateGameCode() {
   for (let i = 0; i < 6; i++) code += chars[Math.floor(Math.random() * chars.length)];
   return code;
 }
-
-// ── Room list (public rooms) ─────────────────────────────────────────────────
-function startRoomListListener() {
-  stopRoomListListener();
-
-  // Simple query (no composite index needed) — filter & sort client-side
-  const q = query(
-    collection(db, 'games'),
-    where('status', '==', 'waiting')
-  );
-
-  unsubscribeRoomList = onSnapshot(q, (snapshot) => {
-    const listEl = document.getElementById('public-room-list');
-    const myUid  = auth.currentUser?.uid;
-
-    const rooms = [];
-    snapshot.forEach(docSnap => {
-      const data = docSnap.data();
-      if (data.visibility === 'public' && data.player1uid !== myUid) {
-        rooms.push({ id: docSnap.id, ...data });
-      }
-    });
-
-    // Sort by createdAt descending (newest first)
-    rooms.sort((a, b) => {
-      const ta = a.createdAt?.toMillis?.() || 0;
-      const tb = b.createdAt?.toMillis?.() || 0;
-      return tb - ta;
-    });
-
-    if (rooms.length === 0) {
-      listEl.innerHTML = '<p style="color:#999; margin:0;">Nema dostupnih soba...</p>';
-      return;
-    }
-
-    listEl.innerHTML = rooms.map(room => {
-      const modeLabel  = room.mode === 'ranked' ? 'Ranked' : 'Casual';
-      const sizeLabel  = room.gridSize + '×' + room.gridSize;
-      const eloLabel   = room.mode === 'ranked' && room.player1rating
-        ? ` (${room.player1rating})` : '';
-      const timerLabel = room.timerEnabled ? ' ⏱' : '';
-
-      return `<div class="public-room-item" data-game-id="${room.id}">
-        <span class="room-creator">${escHtml(room.player1name)}${eloLabel}</span>
-        <span class="room-info">${modeLabel} ${sizeLabel}${timerLabel}</span>
-        <button class="room-join-btn">Pridruži se</button>
-      </div>`;
-    }).join('');
-  }, (error) => {
-    console.error('Room list listener error:', error);
-    document.getElementById('public-room-list').innerHTML =
-      '<p style="color:#c00; margin:0;">Greška pri dohvaćanju soba.</p>';
-  });
-}
-
-function stopRoomListListener() {
-  if (unsubscribeRoomList) {
-    unsubscribeRoomList();
-    unsubscribeRoomList = null;
-  }
-}
-
-// Event delegation: clicking "Pridruži se" on a public room
-document.getElementById('public-room-list').addEventListener('click', (e) => {
-  const btn = e.target.closest('.room-join-btn');
-  if (!btn) return;
-  const item = btn.closest('.public-room-item');
-  if (!item) return;
-  joinGame(item.dataset.gameId);
-});
 
 // ── Start game on both clients ────────────────────────────────────────────────
 async function startOnlineGame(data) {
