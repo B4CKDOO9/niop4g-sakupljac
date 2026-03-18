@@ -204,8 +204,14 @@ function showCreateOptions(mode) {
   }
 }
 
-document.getElementById('create-casual-btn').addEventListener('click', () => showCreateOptions('casual'));
-document.getElementById('create-ranked-btn').addEventListener('click', () => showCreateOptions('ranked'));
+document.getElementById('create-casual-btn').addEventListener('click', () => {
+  if (myWaitingGameId) { alert('Već imate aktivnu sobu! Odustanite prvo.'); return; }
+  showCreateOptions('casual');
+});
+document.getElementById('create-ranked-btn').addEventListener('click', () => {
+  if (myWaitingGameId) { alert('Već imate aktivnu sobu! Odustanite prvo.'); return; }
+  showCreateOptions('ranked');
+});
 
 document.getElementById('cancel-create-btn').addEventListener('click', () => {
   document.getElementById('create-game-options').style.display = 'none';
