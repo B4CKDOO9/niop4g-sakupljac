@@ -97,7 +97,7 @@ const createWindow = () => {
         }
     })
     win.loadFile('index.html')
-    //win.webContents.openDevTools()
+    win.webContents.openDevTools()
     // Izbornik (menu bar)
     const menuTemplate = [
         {

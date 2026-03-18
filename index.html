@@ -62,17 +62,34 @@
                 <div id="ranked-info" style="display:none; margin-bottom:10px;">
                     <p style="margin:0;">Ploča: 8×8 | Timer: 30s po potezu</p>
                 </div>
+                <div id="visibility-options" style="margin-bottom:10px;">
+                    <label style="margin-right:12px; cursor:pointer;">
+                        <input type="radio" name="room-visibility" value="public" checked /> Javna soba
+                    </label>
+                    <label style="cursor:pointer;">
+                        <input type="radio" name="room-visibility" value="private" /> Privatna soba
+                    </label>
+                </div>
                 <button id="confirm-create-btn">Stvori sobu</button>
                 <button id="cancel-create-btn">Odustani</button>
             </div>
 
             <div id="waiting-room" style="display:none; margin-top:12px;">
-                <p>Čekanje protivnika... Kod sobe:</p>
-                <h2 id="room-code-display" style="letter-spacing:4px; font-size:2em;"></h2>
+                <p id="waiting-room-message">Čekanje protivnika...</p>
+                <div id="waiting-room-code-section">
+                    <p>Kod sobe:</p>
+                    <h2 id="room-code-display" style="letter-spacing:4px; font-size:2em;"></h2>
+                </div>
                 <button id="cancel-wait-btn">Odustani</button>
             </div>
 
             <div id="join-room-form" style="display:none; margin-top:12px;">
+                <h3 style="margin-bottom:8px;">Dostupne sobe</h3>
+                <div id="public-room-list" style="max-height:200px; overflow-y:auto; margin-bottom:12px; border:1px solid #ccc; padding:8px; min-height:40px;">
+                    <p style="color:#999; margin:0;">Nema dostupnih soba...</p>
+                </div>
+                <hr style="margin:12px 0;" />
+                <p style="font-size:14px; margin-bottom:4px;">Pridruži se sobi kodom:</p>
                 <input type="text" id="room-code-input" placeholder="Kod sobe" maxlength="6"
                     style="text-transform:uppercase; width:150px; padding:5px; display:block; margin-bottom:8px;" />
                 <button id="confirm-join-btn">Pridruži se</button>
