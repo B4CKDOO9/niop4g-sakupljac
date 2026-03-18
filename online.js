@@ -118,8 +118,19 @@ function showOnlineLobby(user) {
   stopRoomListListener();
 }
 
+window.addEventListener('beforeunload', () => {
+  if (myWaitingGameId) {
+    try { deleteDoc(doc(db, 'games', myWaitingGameId)); } catch (_) {}
+  }
+});
+
 async function backToLobby() {
   clearTurnTimer();
+  // Delete our waiting room if nobody joined
+  if (myWaitingGameId) {
+    try { await deleteDoc(doc(db, 'games', myWaitingGameId)); } catch (_) {}
+    myWaitingGameId = null;
+  }
   // Notify the other player by marking the game as 'left' and recording who left
   if (currentGameId && localGameData && (localGameData.status === 'active' || localGameData.status === 'finished')) {
     const update = { status: 'left' };
@@ -205,11 +216,9 @@ function showCreateOptions(mode) {
 }
 
 document.getElementById('create-casual-btn').addEventListener('click', () => {
-  if (myWaitingGameId) { alert('Već imate aktivnu sobu! Odustanite prvo.'); return; }
   showCreateOptions('casual');
 });
 document.getElementById('create-ranked-btn').addEventListener('click', () => {
-  if (myWaitingGameId) { alert('Već imate aktivnu sobu! Odustanite prvo.'); return; }
   showCreateOptions('ranked');
 });
 
