@@ -393,11 +393,10 @@ function generateGameCode() {
 function startRoomListListener() {
   stopRoomListListener();
 
+  // Simple query (no composite index needed) — filter & sort client-side
   const q = query(
     collection(db, 'games'),
-    where('status', '==', 'waiting'),
-    where('visibility', '==', 'public'),
-    orderBy('createdAt', 'desc')
+    where('status', '==', 'waiting')
   );
 
   unsubscribeRoomList = onSnapshot(q, (snapshot) => {
@@ -407,9 +406,16 @@ function startRoomListListener() {
     const rooms = [];
     snapshot.forEach(docSnap => {
       const data = docSnap.data();
-      if (data.player1uid !== myUid) {
+      if (data.visibility === 'public' && data.player1uid !== myUid) {
         rooms.push({ id: docSnap.id, ...data });
       }
+    });
+
+    // Sort by createdAt descending (newest first)
+    rooms.sort((a, b) => {
+      const ta = a.createdAt?.toMillis?.() || 0;
+      const tb = b.createdAt?.toMillis?.() || 0;
+      return tb - ta;
     });
 
     if (rooms.length === 0) {
