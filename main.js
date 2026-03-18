@@ -98,7 +98,7 @@ const createWindow = () => {
     })
     win.loadFile('index.html')
     //win.webContents.openDevTools()
-    // Izbornik (menu bar)
+    // Izbornik (menu bar) s opcijama za igru i pomoć
     const menuTemplate = [
         {
             label: 'File',
