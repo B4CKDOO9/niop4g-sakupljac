@@ -1,7 +1,39 @@
+:root {
+    --dot-size: 30px;
+    --bg-color: #ffffff;
+    --text-color: #000000;
+    --menu-bg: #ffffff;
+    --grid-bg: #000000;
+    --cell-bg: #ffffff;
+    --cell-border: #000000;
+    --eliminated-bg: gray;
+    --dialog-overlay: rgba(0, 0, 0, 0.5);
+    --dialog-bg: #ffffff;
+    --timer-color: #333333;
+    --user-bar-color: #555555;
+}
+
+body.dark-mode {
+    --bg-color: #121212;
+    --text-color: #e0e0e0;
+    --menu-bg: #121212;
+    --grid-bg: #2c2c2c;
+    --cell-bg: #1e1e1e;
+    --cell-border: #444444;
+    --eliminated-bg: #4a4a4a;
+    --dialog-overlay: rgba(0, 0, 0, 0.8);
+    --dialog-bg: #1e1e1e;
+    --timer-color: #e0e0e0;
+    --user-bar-color: #aaaaaa;
+}
+
 body {
     font-family: Arial, sans-serif;
     margin: 0;
     padding: 20px;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    transition: background-color 0.3s, color 0.3s;
 }
 
 /* Izbornik */
@@ -11,7 +43,7 @@ body {
     left: 0;
     width: 100%;
     height: 100%;
-    background: white;
+    background: var(--menu-bg);
     display: flex;
     justify-content: center;
     align-items: center;
@@ -26,10 +58,36 @@ body {
     margin-bottom: 20px;
 }
 
+/* Game Logo */
+.game-logo {
+    font-size: 3.5rem;
+    font-weight: 900;
+    text-transform: uppercase;
+    background: linear-gradient(45deg, #dc3545, #007bff);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 30px;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.15);
+    letter-spacing: 3px;
+}
+
+body.dark-mode .game-logo {
+    text-shadow: 2px 2px 4px rgba(255, 255, 255, 0.1);
+}
+
 button {
     padding: 10px 20px;
     margin: 5px;
     cursor: pointer;
+    background-color: var(--cell-bg);
+    color: var(--text-color);
+    border: 1px solid var(--cell-border);
+    border-radius: 4px;
+    transition: background-color 0.2s, opacity 0.2s;
+}
+
+button:hover {
+    opacity: 0.8;
 }
 
 /* Dijalozi */
@@ -39,7 +97,7 @@ button {
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(0, 0, 0, 0.5);
+    background: var(--dialog-overlay);
     display: none;
     justify-content: center;
     align-items: center;
@@ -47,9 +105,9 @@ button {
 }
 
 .dialog-content {
-    background: white;
+    background: var(--dialog-bg);
     padding: 20px;
-    border: 1px solid black;
+    border: 1px solid var(--cell-border);
 }
 
 .dialog-content input {
@@ -57,6 +115,9 @@ button {
     width: 200px;
     margin: 10px 0;
     padding: 5px;
+    background: var(--bg-color);
+    color: var(--text-color);
+    border: 1px solid var(--cell-border);
 }
 
 .dialog-buttons {
@@ -86,31 +147,27 @@ button {
 }
 
 /* Grid - dimenzije se postavljaju dinamički JS-om */
-:root {
-    --dot-size: 30px;
-}
-
 #grid {
     display: grid;
     width: 600px;
     height: 600px;
     grid-template-columns: repeat(6, 100px);
-    background: black;
+    background: var(--grid-bg);
     margin: 0 auto;
     position: relative;
 }
 
-#grid > div {
-    outline: 1px solid black;
-    background-color: white;
+#grid>div {
+    outline: 1px solid var(--cell-border);
+    background-color: var(--cell-bg);
     display: flex;
     justify-content: center;
     align-items: center;
     cursor: pointer;
 }
 
-#grid > div.eliminated {
-    background-color: gray;
+#grid>div.eliminated {
+    background-color: var(--eliminated-bg);
 }
 
 /* Točkice - veličina ovisi o gridu */
@@ -126,13 +183,14 @@ button {
 }
 
 /* Online ekrani (auth i lobby) — hidden by default, JS sets display:flex to show */
-#auth-screen, #online-lobby {
+#auth-screen,
+#online-lobby {
     position: fixed;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
-    background: white;
+    background: var(--bg-color);
     display: none;
     justify-content: center;
     align-items: center;
@@ -147,14 +205,15 @@ button {
     margin-top: 12px;
 }
 
-#auth-content, #online-lobby-content {
+#auth-content,
+#online-lobby-content {
     text-align: center;
 }
 
 #user-bar {
     font-size: 13px;
     margin-bottom: 15px;
-    color: #555;
+    color: var(--user-bar-color);
 }
 
 /* Turn timer (online mod) */
@@ -164,7 +223,24 @@ button {
     font-size: 28px;
     font-weight: bold;
     margin-bottom: 8px;
-    color: #333;
+    color: var(--timer-color);
+}
+
+/* Dark mode toggle button */
+.theme-toggle-btn {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1000;
+    background: var(--cell-bg);
+    color: var(--text-color);
+    border: 1px solid var(--cell-border);
+    border-radius: 20px;
+    padding: 8px 16px;
+    cursor: pointer;
+    font-weight: bold;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
 }
 
 /* Responzivnost */
@@ -175,13 +251,13 @@ button {
         aspect-ratio: 1;
         grid-template-columns: repeat(6, 1fr);
     }
-    
-    #grid > div {
+
+    #grid>div {
         width: 100%;
         height: auto;
         aspect-ratio: 1;
     }
-    
+
     #game-header {
         flex-direction: column;
         gap: 10px;

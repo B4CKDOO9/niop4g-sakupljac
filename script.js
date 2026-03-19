@@ -245,7 +245,7 @@ function startLocalTimer() {
   localTimerSeconds = LOCAL_TURN_TIME;
   timerEl.textContent = localTimerSeconds;
   timerEl.style.display = "block";
-  timerEl.style.color = "#333";
+  timerEl.style.color = "var(--timer-color)";
 
   localTimer = setInterval(() => {
     localTimerSeconds--;
@@ -804,3 +804,32 @@ function getRatingsForFirestore() {
 }
 
 window.getRatingsForFirestore = getRatingsForFirestore;
+
+// ── Light/Dark Mode & Logo Init ──────────────────────────────────────────────
+function initThemeAndLogo() {
+  const savedTheme = localStorage.getItem('sakupljac_theme');
+  if (savedTheme === 'dark') {
+    document.body.classList.add('dark-mode');
+  }
+
+  const themeBtn = document.createElement('button');
+  themeBtn.className = 'theme-toggle-btn';
+  themeBtn.textContent = document.body.classList.contains('dark-mode') ? '☀️ Light Mode' : '🌙 Dark Mode';
+  themeBtn.onclick = () => {
+    document.body.classList.toggle('dark-mode');
+    const isDark = document.body.classList.contains('dark-mode');
+    themeBtn.textContent = isDark ? '☀️ Light Mode' : '🌙 Dark Mode';
+    localStorage.setItem('sakupljac_theme', isDark ? 'dark' : 'light');
+  };
+  document.body.appendChild(themeBtn);
+
+  // Apply styling to upgrade the menu heading into a Logo
+  const menuH1 = document.querySelector('#menu-content h1');
+  if (menuH1) menuH1.className = 'game-logo';
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initThemeAndLogo);
+} else {
+  initThemeAndLogo();
+}

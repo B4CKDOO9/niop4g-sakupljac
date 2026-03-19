@@ -1,5 +1,6 @@
 const { app, BrowserWindow, Menu, shell, ipcMain } = require('electron')
 const http = require('http')
+const path = require('path')
 
 let win
 let activeOAuthServer  = null
@@ -91,6 +92,7 @@ const createWindow = () => {
         //fullscreen: true,
         width: 800,
         height: 850,
+        icon: path.join(__dirname, 'icon.png'),
         webPreferences: {
             nodeIntegration: true,
             contextIsolation: false
