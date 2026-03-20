@@ -58,6 +58,21 @@ body {
     margin-bottom: 20px;
 }
 
+/* Menu Logo */
+.menu-logo {
+    width: 120px;
+    height: 120px;
+    margin-bottom: 20px;
+    object-fit: contain;
+}
+
+/* Language toggle button */
+.language-btn {
+    margin-top: 20px;
+    font-size: 14px;
+    padding: 8px 16px;
+}
+
 /* Game Logo */
 .game-logo {
     font-size: 3.5rem;
