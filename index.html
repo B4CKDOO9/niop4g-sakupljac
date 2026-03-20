@@ -13,50 +13,87 @@
     <!-- Izbornik -->
     <div id="menu">
         <div id="menu-content">
+<<<<<<< HEAD
             <img src="icons/icon.png" alt="Logo" class="menu-logo">
             <h1 data-i18n="menu.title">Sakupljač</h1>
             <button id="new-game-btn" data-i18n="menu.newGame">Nova Igra</button>
             <button id="online-game-btn" data-i18n="menu.onlineGame">Online Igra</button>
             <button id="leaderboard-btn" data-i18n="menu.leaderboard">Leaderboard</button>
             <button id="language-toggle-btn" class="language-btn">🌐 <span id="lang-text">Language</span></button>
+=======
+            <div class="game-logo">Sakupljač</div>
+            <div class="menu-buttons">
+                <button id="new-game-btn" class="menu-btn">🎮 Nova Igra</button>
+                <button id="online-game-btn" class="menu-btn">🌐 Online Igra</button>
+                <button id="leaderboard-btn" class="menu-btn">🏆 Leaderboard</button>
+            </div>
+>>>>>>> 297ae9d7d3c1a9e4104c380be712cbdc48e4fa95
         </div>
     </div>
 
     <!-- Ekran za prijavu (online mod) -->
     <div id="auth-screen" style="display:none;">
         <div id="auth-content">
+<<<<<<< HEAD
             <h1 data-i18n="auth.title">Sakupljač — Online</h1>
             <p id="auth-status" data-i18n="auth.status">Prijavite se za online igru.</p>
             <button id="sign-in-btn" data-i18n="auth.signIn">Prijavi se s Google računom</button>
             <button id="auth-cancel-btn" data-i18n="auth.cancel">Odustani</button>
+=======
+            <div class="game-logo">Sakupljač</div>
+            <p id="auth-status" style="margin-bottom: 20px; color: var(--user-bar-color); font-size: 0.95rem;">Prijavite se za online igru.</p>
+            <div class="menu-buttons">
+                <button id="sign-in-btn" class="menu-btn">🔑 Prijavi se s Google računom</button>
+                <button id="auth-cancel-btn" class="menu-btn">Odustani</button>
+            </div>
+>>>>>>> 297ae9d7d3c1a9e4104c380be712cbdc48e4fa95
         </div>
     </div>
 
     <!-- Online lobby -->
     <div id="online-lobby" style="display:none;">
         <div id="online-lobby-content">
+            <div class="game-logo">Sakupljač</div>
+
             <div id="user-bar">
                 <span id="user-display-name"></span>
                 <button id="sign-out-btn" data-i18n="auth.signOut">Odjavi se</button>
             </div>
+<<<<<<< HEAD
             <h1 data-i18n="lobby.title">Sakupljač — Online</h1>
             <button id="create-casual-btn" data-i18n="lobby.casualGame">Casual Igra</button>
             <button id="create-ranked-btn" data-i18n="lobby.rankedGame">Ranked Igra</button>
             <button id="join-game-btn" data-i18n="lobby.joinGame">Pridruži se</button>
             <button id="online-leaderboard-btn" data-i18n="lobby.leaderboard">Leaderboard</button>
             <button id="online-back-btn" data-i18n="lobby.back">Natrag</button>
+=======
+>>>>>>> 297ae9d7d3c1a9e4104c380be712cbdc48e4fa95
 
-            <div id="create-game-options" style="display:none; margin-top:12px;">
-                <p id="create-mode-label" style="font-weight:bold; margin-bottom:8px;"></p>
+            <div class="menu-buttons">
+                <button id="create-casual-btn" class="menu-btn">🎮 Casual Igra</button>
+                <button id="create-ranked-btn" class="menu-btn">🏅 Ranked Igra</button>
+                <button id="join-game-btn" class="menu-btn">🔗 Pridruži se</button>
+                <button id="online-leaderboard-btn" class="menu-btn">🏆 Leaderboard</button>
+                <button id="online-back-btn" class="menu-btn">← Natrag</button>
+            </div>
+
+            <div id="create-game-options" style="display:none; margin-top:20px;">
+                <p id="create-mode-label" style="font-weight:600; margin-bottom:12px;"></p>
                 <div id="casual-options">
+<<<<<<< HEAD
                     <label for="lobby-grid-size" style="display:block; margin-bottom:5px;" data-i18n="lobby.gridSize">Veličina polja:</label>
                     <select id="lobby-grid-size" style="width:150px; margin-bottom:10px; padding:5px;">
+=======
+                    <label for="lobby-grid-size" style="display:block; margin-bottom:5px; font-size:0.88rem;">Veličina polja</label>
+                    <select id="lobby-grid-size" style="width:100%; box-sizing:border-box; margin-bottom:12px; padding:8px 10px; border-radius:6px; border:1px solid var(--cell-border); background:var(--bg-color); color:var(--text-color); font-size:0.95rem;">
+>>>>>>> 297ae9d7d3c1a9e4104c380be712cbdc48e4fa95
                         <option value="4">4×4</option>
                         <option value="6" selected>6×6</option>
                         <option value="8">8×8</option>
                         <option value="10">10×10</option>
                         <option value="12">12×12</option>
                     </select>
+<<<<<<< HEAD
                     <label style="display:block; margin-bottom:10px; font-size:14px; cursor:pointer;">
                         <input type="checkbox" id="online-timer-checkbox" /> <span data-i18n="lobby.timerOption">Igraj s timerom (30s po potezu)</span>
                     </label>
@@ -79,6 +116,35 @@
                     style="text-transform:uppercase; width:150px; padding:5px; display:block; margin-bottom:8px;" />
                 <button id="confirm-join-btn" data-i18n="lobby.join">Pridruži se</button>
                 <button id="cancel-join-btn" data-i18n="lobby.cancel">Odustani</button>
+=======
+                    <label style="display:flex; align-items:center; gap:8px; margin-bottom:14px; font-size:0.88rem; cursor:pointer;">
+                        <input type="checkbox" id="online-timer-checkbox" style="margin:0;" /> Igraj s timerom (30s po potezu)
+                    </label>
+                </div>
+                <div id="ranked-info" style="display:none; margin-bottom:14px; font-size:0.9rem; color:var(--user-bar-color);">
+                    <p style="margin:0;">Ploča: 8×8 &nbsp;|&nbsp; Timer: 30s po potezu</p>
+                </div>
+                <div style="display:flex; gap:8px; justify-content:center;">
+                    <button id="confirm-create-btn" class="menu-btn" style="width:auto; padding:9px 22px;">Stvori sobu</button>
+                    <button id="cancel-create-btn" class="menu-btn" style="width:auto; padding:9px 22px;">Odustani</button>
+                </div>
+            </div>
+
+            <div id="waiting-room" style="display:none; margin-top:20px; text-align:center;">
+                <p style="color:var(--user-bar-color); font-size:0.92rem; margin-bottom:8px;">Čekanje protivnika... Kod sobe:</p>
+                <h2 id="room-code-display" style="letter-spacing:6px; font-size:2.2rem; margin:0 0 16px 0;"></h2>
+                <button id="cancel-wait-btn" class="menu-btn" style="width:auto; padding:9px 22px;">Odustani</button>
+            </div>
+
+            <div id="join-room-form" style="display:none; margin-top:20px;">
+                <label style="display:block; margin-bottom:5px; font-size:0.88rem;">Kod sobe</label>
+                <input type="text" id="room-code-input" placeholder="Unesite kod" maxlength="6"
+                    style="text-transform:uppercase; width:100%; box-sizing:border-box; padding:8px 10px; border-radius:6px; border:1px solid var(--cell-border); background:var(--bg-color); color:var(--text-color); font-size:0.95rem; margin-bottom:12px; display:block;" />
+                <div style="display:flex; gap:8px; justify-content:center;">
+                    <button id="confirm-join-btn" class="menu-btn" style="width:auto; padding:9px 22px;">Pridruži se</button>
+                    <button id="cancel-join-btn" class="menu-btn" style="width:auto; padding:9px 22px;">Odustani</button>
+                </div>
+>>>>>>> 297ae9d7d3c1a9e4104c380be712cbdc48e4fa95
             </div>
         </div>
     </div>
@@ -86,19 +152,34 @@
     <!-- Dijalog za unos imena (lokalni mod) -->
     <div id="name-dialog" class="dialog">
         <div class="dialog-content">
+<<<<<<< HEAD
             <h2 data-i18n="nameDialog.title">Unesite Imena Igrača</h2>
             <input type="text" id="player1-name" data-i18n-placeholder="nameDialog.player1" placeholder="Ime igrača 1" />
             <input type="text" id="player2-name" data-i18n-placeholder="nameDialog.player2" placeholder="Ime igrača 2" />
             <label for="grid-size-select" style="margin-top:8px; display:block; font-size:14px;" data-i18n="nameDialog.gridSize">Veličina polja:</label>
             <select id="grid-size-select" style="width:214px; margin:5px 0 10px; padding:5px;">
+=======
+            <h2>Nova Igra</h2>
+            <label for="player1-name">Ime igrača 1</label>
+            <input type="text" id="player1-name" placeholder="Igrač 1" />
+            <label for="player2-name">Ime igrača 2</label>
+            <input type="text" id="player2-name" placeholder="Igrač 2" />
+            <label for="grid-size-select">Veličina polja</label>
+            <select id="grid-size-select">
+>>>>>>> 297ae9d7d3c1a9e4104c380be712cbdc48e4fa95
                 <option value="4">4×4</option>
                 <option value="6" selected>6×6</option>
                 <option value="8">8×8</option>
                 <option value="10">10×10</option>
                 <option value="12">12×12</option>
             </select>
+<<<<<<< HEAD
             <label style="display:block; margin-bottom:10px; font-size:14px; cursor:pointer;">
                 <input type="checkbox" id="timer-checkbox" /> <span data-i18n="nameDialog.timerOption">Igraj s timerom (30s po potezu)</span>
+=======
+            <label style="display:flex; align-items:center; gap:8px; margin-top:4px; cursor:pointer;">
+                <input type="checkbox" id="timer-checkbox" style="width:auto; margin:0;" /> Igraj s timerom (30s po potezu)
+>>>>>>> 297ae9d7d3c1a9e4104c380be712cbdc48e4fa95
             </label>
             <div class="dialog-buttons">
                 <button id="start-btn" class="dialog-btn" data-i18n="nameDialog.start">Započni Igru</button>
