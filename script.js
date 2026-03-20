@@ -12,14 +12,6 @@ const STORAGE_KEY_PLAYERS = "sakupljac_players_v1";
 const DEFAULT_FIDE_RATING = 1200;
 const ELO_K_FACTOR = 32;
 
-// i18n initialization
-(async function() {
-  await i18n.loadLanguage(i18n.getCurrentLanguage());
-  i18n.updatePageTexts();
-  updateDynamicTranslations();
-  document.getElementById('lang-text').textContent = i18n.t('language.switch');
-})();
-
 // Online multiplayer hook — set to true by online.js when an online game is active
 var onlineMode = false;
 
@@ -132,7 +124,7 @@ function showLeaderboard() {
   });
 
   if (players.length === 0) {
-    leaderboardList.textContent = i18n.t("leaderboard.noPlayers") || "Nema spremljenih igrača.";
+    leaderboardList.textContent = "Nema spremljenih igrača.";
   } else {
     leaderboardList.innerHTML = `
       <table class="leaderboard-table">
@@ -184,7 +176,7 @@ function startNewGame() {
   const p2Name = document.getElementById("player2-name").value.trim();
 
   if (!p1Name || !p2Name) {
-    alert(i18n.t("messages.enterNames"));
+    alert("Molimo unesite oba imena igrača!");
     return;
   }
 
@@ -204,7 +196,7 @@ function startNewGame() {
 }
 
 function resetGame() {
-  if (confirm(i18n.t("confirmReset.message"))) {
+  if (confirm("Jeste li sigurni da želite resetirati igru?")) {
     clearGame();
     initializeGame();
   }
@@ -370,7 +362,7 @@ function handleCellClick(cell) {
     let colDiff = Math.abs(col - lastPlaces.col);
 
     if (rowDiff > 1 || colDiff > 1 || (rowDiff === 0 && colDiff === 0)) {
-      alert(i18n.t("messages.mustEliminate") || "Morate osjenčati susjednu ćeliju!");
+      alert("Morate osjenčati susjednu ćeliju!");
       return;
     }
 
@@ -392,9 +384,9 @@ function updateStatus() {
   let color = currentPlayer === 1 ? "#dc3545" : "#007bff";
 
   if (phase === "place") {
-    document.getElementById("status").textContent = `${name} - ${i18n.t("game.placePhase") || "Postavi točku"}`;
+    document.getElementById("status").textContent = `${name} - Postavi točku`;
   } else {
-    document.getElementById("status").textContent = `${name} - ${i18n.t("game.eliminatePhase") || "Osjenčaj polje"}`;
+    document.getElementById("status").textContent = `${name} - Osjenčaj polje`;
   }
 
   document.getElementById("status").style.color = color;
@@ -624,18 +616,18 @@ function checkGameOver() {
   let message = "";
 
   if (p1 === p2) {
-    message = `${i18n.t("game.draw")} ${i18n.t("game.bothHave") || "Oboje imate"} ${p1} ${i18n.t("game.connectedDots") || "povezanih točaka"}.\n${i18n.t("game.rating") || "Rejting"}: ${player1Name} ${formatRatingDelta(ratingUpdate.delta1)} (${ratingUpdate.rating1}), ${player2Name} ${formatRatingDelta(ratingUpdate.delta2)} (${ratingUpdate.rating2}).`;
-    document.getElementById("status").textContent = i18n.t("game.draw");
+    message = `Neriješeno! Oboje imate ${p1} povezanih točaka.\nRejting: ${player1Name} ${formatRatingDelta(ratingUpdate.delta1)} (${ratingUpdate.rating1}), ${player2Name} ${formatRatingDelta(ratingUpdate.delta2)} (${ratingUpdate.rating2}).`;
+    document.getElementById("status").textContent = "Neriješeno!";
     document.getElementById("status").style.color = "#6c757d";
   } else if (p1 > p2) {
-    message = `${player1Name} ${i18n.t("game.winsWithPoints") || "pobjeđuje s"} ${p1} ${i18n.t("game.connectedDots") || "povezanih točaka"}! (${player2Name}: ${p2})\n${i18n.t("game.rating") || "Rejting"}: ${player1Name} ${formatRatingDelta(ratingUpdate.delta1)} (${ratingUpdate.rating1}), ${player2Name} ${formatRatingDelta(ratingUpdate.delta2)} (${ratingUpdate.rating2}).`;
+    message = `${player1Name} pobjeđuje s ${p1} povezanih točka! (${player2Name}: ${p2})\nRejting: ${player1Name} ${formatRatingDelta(ratingUpdate.delta1)} (${ratingUpdate.rating1}), ${player2Name} ${formatRatingDelta(ratingUpdate.delta2)} (${ratingUpdate.rating2}).`;
     document.getElementById("status").textContent =
-      `${i18n.t("game.winner")}: ${player1Name}!`;
+      `Pobjednik: ${player1Name}!`;
     document.getElementById("status").style.color = "#dc3545";
   } else {
-    message = `${player2Name} ${i18n.t("game.winsWithPoints") || "pobjeđuje s"} ${p2} ${i18n.t("game.connectedDots") || "povezanih točaka"}! (${player1Name}: ${p1})\n${i18n.t("game.rating") || "Rejting"}: ${player2Name} ${formatRatingDelta(ratingUpdate.delta2)} (${ratingUpdate.rating2}), ${player1Name} ${formatRatingDelta(ratingUpdate.delta1)} (${ratingUpdate.rating1}).`;
+    message = `${player2Name} pobjeđuje s ${p2} povezanih točaka! (${player1Name}: ${p1})\nRejting: ${player2Name} ${formatRatingDelta(ratingUpdate.delta2)} (${ratingUpdate.rating2}), ${player1Name} ${formatRatingDelta(ratingUpdate.delta1)} (${ratingUpdate.rating1}).`;
     document.getElementById("status").textContent =
-      `${i18n.t("game.winner")}: ${player2Name}!`;
+      `Pobjednik: ${player2Name}!`;
     document.getElementById("status").style.color = "#007bff";
   }
 
@@ -837,6 +829,7 @@ function initThemeAndLogo() {
   const themeBtn = document.createElement('button');
   themeBtn.className = 'theme-toggle-btn';
 <<<<<<< HEAD
+<<<<<<< HEAD
   const themeIcon = document.createElement('img');
   themeIcon.src = document.body.classList.contains('dark-mode') ? 'icons/brightness.png' : 'icons/moon.png';
   themeIcon.alt = 'Toggle theme';
@@ -847,10 +840,13 @@ function initThemeAndLogo() {
   themeBtn.id = 'theme-toggle-btn';
   themeBtn.textContent = document.body.classList.contains('dark-mode') ? '☀️ Light Mode' : '🌙 Dark Mode';
 >>>>>>> 297ae9d7d3c1a9e4104c380be712cbdc48e4fa95
+=======
+  themeBtn.textContent = document.body.classList.contains('dark-mode') ? '☀️ Light Mode' : '🌙 Dark Mode';
+>>>>>>> parent of f3907aa (i18n added)
   themeBtn.onclick = () => {
     document.body.classList.toggle('dark-mode');
     const isDark = document.body.classList.contains('dark-mode');
-    themeIcon.src = isDark ? 'icons/brightness.png' : 'icons/moon.png';
+    themeBtn.textContent = isDark ? '☀️ Light Mode' : '🌙 Dark Mode';
     localStorage.setItem('sakupljac_theme', isDark ? 'dark' : 'light');
   };
   document.body.appendChild(themeBtn);
@@ -864,26 +860,4 @@ if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', initThemeAndLogo);
 } else {
   initThemeAndLogo();
-}
-// Language switcher
-document.getElementById('language-toggle-btn')?.addEventListener('click', async () => {
-  const newLang = i18n.getCurrentLanguage() === 'hr' ? 'en' : 'hr';
-  await i18n.loadLanguage(newLang);
-  i18n.updatePageTexts();
-  updateDynamicTranslations();
-  document.getElementById('lang-text').textContent = i18n.t('language.switch');
-  
-  // Update title
-  document.title = i18n.t('app.title');
-  
-  // Update any active game status if game is running
-  if (gameArea.style.display === 'block') {
-    updateStatus();
-  }
-});
-
-// Function to update dynamic translations that aren't in HTML
-function updateDynamicTranslations() {
-  // This function is called after language changes to update any dynamic content
-  // Currently, most dynamic text is generated on-demand using i18n.t()
 }

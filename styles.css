@@ -59,6 +59,7 @@ body {
     margin-bottom: 20px;
 }
 
+<<<<<<< HEAD
 /* Menu Logo */
 .menu-logo {
     width: 120px;
@@ -76,6 +77,8 @@ body {
 
 =======
 >>>>>>> 297ae9d7d3c1a9e4104c380be712cbdc48e4fa95
+=======
+>>>>>>> parent of f3907aa (i18n added)
 /* Game Logo */
 .game-logo {
     font-size: 3.5rem;

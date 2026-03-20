@@ -63,7 +63,7 @@ document.getElementById('online-game-btn').addEventListener('click', () => {
 
 // ── Auth screen ───────────────────────────────────────────────────────────────
 document.getElementById('sign-in-btn').addEventListener('click', () => {
-  document.getElementById('auth-status').textContent = i18n.t('messages.signingIn');
+  document.getElementById('auth-status').textContent = 'Otvaranje preglednika za prijavu...';
   pendingSignIn = true;
   startGoogleSignIn();
 });
@@ -71,7 +71,7 @@ document.getElementById('sign-in-btn').addEventListener('click', () => {
 document.getElementById('auth-cancel-btn').addEventListener('click', () => {
   cancelGoogleSignIn();
   pendingSignIn = false;
-  document.getElementById('auth-status').textContent = i18n.t('auth.status');
+  document.getElementById('auth-status').textContent = 'Prijavite se za online igru.';
   authScreen.style.display = 'none';
   menu.style.display = 'flex';
 });
@@ -170,7 +170,7 @@ function showCreateOptions(mode) {
   document.getElementById('join-room-form').style.display      = 'none';
 
   const isCasual = mode === 'casual';
-  document.getElementById('create-mode-label').textContent = isCasual ? i18n.t('lobby.casualGame') : i18n.t('lobby.rankedGame');
+  document.getElementById('create-mode-label').textContent = isCasual ? 'Casual Igra' : 'Ranked Igra';
   document.getElementById('casual-options').style.display  = isCasual ? 'block' : 'none';
   document.getElementById('ranked-info').style.display     = isCasual ? 'none'  : 'block';
 }
@@ -213,7 +213,7 @@ async function createGame() {
       createdAt:        serverTimestamp()
     });
   } catch (err) {
-    alert(i18n.t('messages.createError') + ' ' + err.message);
+    alert('Greška pri stvaranju igre: ' + err.message);
     return;
   }
 
@@ -262,19 +262,19 @@ document.getElementById('room-code-input').addEventListener('keypress', (e) => {
 
 async function joinGame() {
   const code   = document.getElementById('room-code-input').value.toUpperCase().trim();
-  if (!code) { alert(i18n.t('messages.enterRoomCode')); return; }
+  if (!code) { alert('Unesite kod sobe!'); return; }
 
   const gameId = 'game_' + code;
   let snap;
   try {
     snap = await getDoc(doc(db, 'games', gameId));
   } catch (err) {
-    alert(i18n.t('messages.searchError') + ' ' + err.message);
+    alert('Greška pri pretraživanju: ' + err.message);
     return;
   }
 
   if (!snap.exists() || snap.data().status !== 'waiting') {
-    alert(i18n.t('messages.roomNotFound'));
+    alert('Soba nije pronađena ili je igra već počela.');
     return;
   }
 
@@ -286,7 +286,7 @@ async function joinGame() {
       status:      'active'
     });
   } catch (err) {
-    alert(i18n.t('messages.joinError') + ' ' + err.message);
+    alert('Greška pri pridruživanju: ' + err.message);
     return;
   }
 
@@ -452,7 +452,7 @@ async function handleOnlineCellClick(cell) {
   if (localGameData.phase === 'place') {
     // Reuse adjacentCells from script.js (reads window.gameState)
     if (!window.adjacentCells(row, col)) {
-      alert(i18n.t('messages.invalidPlacement'));
+      alert('Nevaljano postavljanje! Morate postaviti pokraj postojeće pločice ili na prazno polje.');
       return;
     }
 
@@ -478,7 +478,7 @@ async function handleOnlineCellClick(cell) {
     const rowDiff = Math.abs(row - lp.row);
     const colDiff = Math.abs(col - lp.col);
     if (rowDiff > 1 || colDiff > 1 || (rowDiff === 0 && colDiff === 0)) {
-      alert(i18n.t('messages.mustEliminate'));
+      alert('Morate osjenčati susjednu ćeliju!');
       return;
     }
 
@@ -756,21 +756,21 @@ function showGameOverDialog(data, result) {
   let message = '';
 
   if (result.winner === 0) {
-    message = `${i18n.t('game.draw')} ${i18n.t('game.bothHave')} ${s1} ${i18n.t('game.connectedDots')}.`;
-    statusEl.textContent = i18n.t('game.draw');
+    message = `Neriješeno! Oboje imate ${s1} povezanih pločica.`;
+    statusEl.textContent = 'Neriješeno!';
     statusEl.style.color = '#6c757d';
   } else if (result.winner === 1) {
-    message = `${p1} ${i18n.t('game.winsWithPoints')} ${s1} ${i18n.t('game.connectedDots')}! (${p2}: ${s2})`;
-    statusEl.textContent = `${i18n.t('game.winner')}: ${p1}!`;
+    message = `${p1} pobjeđuje s ${s1} povezanih pločica! (${p2}: ${s2})`;
+    statusEl.textContent = `Pobjednik: ${p1}!`;
     statusEl.style.color = '#dc3545';
   } else {
-    message = `${p2} ${i18n.t('game.winsWithPoints')} ${s2} ${i18n.t('game.connectedDots')}! (${p1}: ${s1})`;
-    statusEl.textContent = `${i18n.t('game.winner')}: ${p2}!`;
+    message = `${p2} pobjeđuje s ${s2} povezanih pločica! (${p1}: ${s1})`;
+    statusEl.textContent = `Pobjednik: ${p2}!`;
     statusEl.style.color = '#007bff';
   }
 
   if (d1 || d2) {
-    message += `\n${i18n.t('game.rating')}: ${p1} ${d1}${r1}, ${p2} ${d2}${r2}.`;
+    message += `\nRejting: ${p1} ${d1}${r1}, ${p2} ${d2}${r2}.`;
   }
 
   setTimeout(() => {
@@ -796,7 +796,7 @@ document.getElementById('online-leaderboard-btn').addEventListener('click', show
 
 async function showOnlineLeaderboard() {
   const listEl = document.getElementById('leaderboard-list');
-  listEl.textContent = i18n.t('messages.loading');
+  listEl.textContent = 'Učitavanje...';
   leaderDlg.style.display = 'flex';
 
   try {
@@ -805,7 +805,7 @@ async function showOnlineLeaderboard() {
     snap.forEach(d => players.push(d.data()));
 
     if (players.length === 0) {
-      listEl.textContent = i18n.t('messages.noOnlinePlayers');
+      listEl.textContent = 'Još nema online igrača.';
     } else {
       listEl.innerHTML = `
         <table class="leaderboard-table">
@@ -829,7 +829,7 @@ async function showOnlineLeaderboard() {
         </table>`;
     }
   } catch (err) {
-    listEl.textContent = i18n.t('messages.error') + ' ' + err.message;
+    listEl.textContent = 'Greška: ' + err.message;
   }
 }
 

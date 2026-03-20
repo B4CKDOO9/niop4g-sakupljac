@@ -6,13 +6,14 @@
     <meta http-equiv="Content-Security-Policy"
         content="default-src 'self'; script-src 'self' https://www.gstatic.com; style-src 'self' 'unsafe-inline'; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://securetoken.googleapis.com https://identitytoolkit.googleapis.com wss://*.firebaseio.com; frame-src https://accounts.google.com;" />
     <link rel="stylesheet" href="styles.css">
-    <title data-i18n="app.title">Sakupljač</title>
+    <title>Sakupljač</title>
 </head>
 
 <body>
     <!-- Izbornik -->
     <div id="menu">
         <div id="menu-content">
+<<<<<<< HEAD
 <<<<<<< HEAD
             <img src="icons/icon.png" alt="Logo" class="menu-logo">
             <h1 data-i18n="menu.title">Sakupljač</h1>
@@ -28,12 +29,19 @@
                 <button id="leaderboard-btn" class="menu-btn">🏆 Leaderboard</button>
             </div>
 >>>>>>> 297ae9d7d3c1a9e4104c380be712cbdc48e4fa95
+=======
+            <h1>Sakupljač</h1>
+            <button id="new-game-btn">Nova Igra</button>
+            <button id="online-game-btn">Online Igra</button>
+            <button id="leaderboard-btn">Leaderboard</button>
+>>>>>>> parent of f3907aa (i18n added)
         </div>
     </div>
 
     <!-- Ekran za prijavu (online mod) -->
     <div id="auth-screen" style="display:none;">
         <div id="auth-content">
+<<<<<<< HEAD
 <<<<<<< HEAD
             <h1 data-i18n="auth.title">Sakupljač — Online</h1>
             <p id="auth-status" data-i18n="auth.status">Prijavite se za online igru.</p>
@@ -47,6 +55,12 @@
                 <button id="auth-cancel-btn" class="menu-btn">Odustani</button>
             </div>
 >>>>>>> 297ae9d7d3c1a9e4104c380be712cbdc48e4fa95
+=======
+            <h1>Sakupljač — Online</h1>
+            <p id="auth-status">Prijavite se za online igru.</p>
+            <button id="sign-in-btn">Prijavi se s Google računom</button>
+            <button id="auth-cancel-btn">Odustani</button>
+>>>>>>> parent of f3907aa (i18n added)
         </div>
     </div>
 
@@ -57,8 +71,9 @@
 
             <div id="user-bar">
                 <span id="user-display-name"></span>
-                <button id="sign-out-btn" data-i18n="auth.signOut">Odjavi se</button>
+                <button id="sign-out-btn">Odjavi se</button>
             </div>
+<<<<<<< HEAD
 <<<<<<< HEAD
             <h1 data-i18n="lobby.title">Sakupljač — Online</h1>
             <button id="create-casual-btn" data-i18n="lobby.casualGame">Casual Igra</button>
@@ -68,6 +83,14 @@
             <button id="online-back-btn" data-i18n="lobby.back">Natrag</button>
 =======
 >>>>>>> 297ae9d7d3c1a9e4104c380be712cbdc48e4fa95
+=======
+            <h1>Sakupljač — Online</h1>
+            <button id="create-casual-btn">Casual Igra</button>
+            <button id="create-ranked-btn">Ranked Igra</button>
+            <button id="join-game-btn">Pridruži se</button>
+            <button id="online-leaderboard-btn">Leaderboard</button>
+            <button id="online-back-btn">Natrag</button>
+>>>>>>> parent of f3907aa (i18n added)
 
             <div class="menu-buttons">
                 <button id="create-casual-btn" class="menu-btn">🎮 Casual Igra</button>
@@ -81,7 +104,11 @@
                 <p id="create-mode-label" style="font-weight:600; margin-bottom:12px;"></p>
                 <div id="casual-options">
 <<<<<<< HEAD
+<<<<<<< HEAD
                     <label for="lobby-grid-size" style="display:block; margin-bottom:5px;" data-i18n="lobby.gridSize">Veličina polja:</label>
+=======
+                    <label for="lobby-grid-size" style="display:block; margin-bottom:5px;">Veličina polja:</label>
+>>>>>>> parent of f3907aa (i18n added)
                     <select id="lobby-grid-size" style="width:150px; margin-bottom:10px; padding:5px;">
 =======
                     <label for="lobby-grid-size" style="display:block; margin-bottom:5px; font-size:0.88rem;">Veličina polja</label>
@@ -95,25 +122,26 @@
                     </select>
 <<<<<<< HEAD
                     <label style="display:block; margin-bottom:10px; font-size:14px; cursor:pointer;">
-                        <input type="checkbox" id="online-timer-checkbox" /> <span data-i18n="lobby.timerOption">Igraj s timerom (30s po potezu)</span>
+                        <input type="checkbox" id="online-timer-checkbox" /> Igraj s timerom (30s po potezu)
                     </label>
                 </div>
                 <div id="ranked-info" style="display:none; margin-bottom:10px;">
-                    <p style="margin:0;" data-i18n="lobby.rankedInfo">Ploča: 8×8 | Timer: 30s po potezu</p>
+                    <p style="margin:0;">Ploča: 8×8 | Timer: 30s po potezu</p>
                 </div>
-                <button id="confirm-create-btn" data-i18n="lobby.createRoom">Stvori sobu</button>
-                <button id="cancel-create-btn" data-i18n="lobby.cancel">Odustani</button>
+                <button id="confirm-create-btn">Stvori sobu</button>
+                <button id="cancel-create-btn">Odustani</button>
             </div>
 
             <div id="waiting-room" style="display:none; margin-top:12px;">
-                <p data-i18n="lobby.waitingForOpponent">Čekanje protivnika... Kod sobe:</p>
+                <p>Čekanje protivnika... Kod sobe:</p>
                 <h2 id="room-code-display" style="letter-spacing:4px; font-size:2em;"></h2>
-                <button id="cancel-wait-btn" data-i18n="lobby.cancel">Odustani</button>
+                <button id="cancel-wait-btn">Odustani</button>
             </div>
 
             <div id="join-room-form" style="display:none; margin-top:12px;">
-                <input type="text" id="room-code-input" data-i18n-placeholder="lobby.roomCode" placeholder="Kod sobe" maxlength="6"
+                <input type="text" id="room-code-input" placeholder="Kod sobe" maxlength="6"
                     style="text-transform:uppercase; width:150px; padding:5px; display:block; margin-bottom:8px;" />
+<<<<<<< HEAD
                 <button id="confirm-join-btn" data-i18n="lobby.join">Pridruži se</button>
                 <button id="cancel-join-btn" data-i18n="lobby.cancel">Odustani</button>
 =======
@@ -145,6 +173,10 @@
                     <button id="cancel-join-btn" class="menu-btn" style="width:auto; padding:9px 22px;">Odustani</button>
                 </div>
 >>>>>>> 297ae9d7d3c1a9e4104c380be712cbdc48e4fa95
+=======
+                <button id="confirm-join-btn">Pridruži se</button>
+                <button id="cancel-join-btn">Odustani</button>
+>>>>>>> parent of f3907aa (i18n added)
             </div>
         </div>
     </div>
@@ -153,10 +185,17 @@
     <div id="name-dialog" class="dialog">
         <div class="dialog-content">
 <<<<<<< HEAD
+<<<<<<< HEAD
             <h2 data-i18n="nameDialog.title">Unesite Imena Igrača</h2>
             <input type="text" id="player1-name" data-i18n-placeholder="nameDialog.player1" placeholder="Ime igrača 1" />
             <input type="text" id="player2-name" data-i18n-placeholder="nameDialog.player2" placeholder="Ime igrača 2" />
             <label for="grid-size-select" style="margin-top:8px; display:block; font-size:14px;" data-i18n="nameDialog.gridSize">Veličina polja:</label>
+=======
+            <h2>Unesite Imena Igrača</h2>
+            <input type="text" id="player1-name" placeholder="Ime igrača 1" />
+            <input type="text" id="player2-name" placeholder="Ime igrača 2" />
+            <label for="grid-size-select" style="margin-top:8px; display:block; font-size:14px;">Veličina polja:</label>
+>>>>>>> parent of f3907aa (i18n added)
             <select id="grid-size-select" style="width:214px; margin:5px 0 10px; padding:5px;">
 =======
             <h2>Nova Igra</h2>
@@ -175,15 +214,19 @@
             </select>
 <<<<<<< HEAD
             <label style="display:block; margin-bottom:10px; font-size:14px; cursor:pointer;">
+<<<<<<< HEAD
                 <input type="checkbox" id="timer-checkbox" /> <span data-i18n="nameDialog.timerOption">Igraj s timerom (30s po potezu)</span>
 =======
             <label style="display:flex; align-items:center; gap:8px; margin-top:4px; cursor:pointer;">
                 <input type="checkbox" id="timer-checkbox" style="width:auto; margin:0;" /> Igraj s timerom (30s po potezu)
 >>>>>>> 297ae9d7d3c1a9e4104c380be712cbdc48e4fa95
+=======
+                <input type="checkbox" id="timer-checkbox" /> Igraj s timerom (30s po potezu)
+>>>>>>> parent of f3907aa (i18n added)
             </label>
             <div class="dialog-buttons">
-                <button id="start-btn" class="dialog-btn" data-i18n="nameDialog.start">Započni Igru</button>
-                <button id="cancel-btn" class="dialog-btn secondary" data-i18n="nameDialog.cancel">Odustani</button>
+                <button id="start-btn" class="dialog-btn">Započni Igru</button>
+                <button id="cancel-btn" class="dialog-btn secondary">Odustani</button>
             </div>
         </div>
     </div>
@@ -191,11 +234,11 @@
     <!-- Dijalog za kraj igre -->
     <div id="game-over-dialog" class="dialog">
         <div class="dialog-content">
-            <h2 id="game-over-title" data-i18n="gameOver.title">Kraj Igre!</h2>
+            <h2 id="game-over-title">Kraj Igre!</h2>
             <p id="game-over-message"></p>
             <div class="dialog-buttons">
-                <button id="new-game-after-btn" class="dialog-btn" data-i18n="gameOver.newGame">Nova Igra</button>
-                <button id="menu-btn" class="dialog-btn secondary" data-i18n="gameOver.mainMenu">Glavni Izbornik</button>
+                <button id="new-game-after-btn" class="dialog-btn">Nova Igra</button>
+                <button id="menu-btn" class="dialog-btn secondary">Glavni Izbornik</button>
             </div>
         </div>
     </div>
@@ -203,10 +246,10 @@
     <!-- Dijalog za leaderboard -->
     <div id="leaderboard-dialog" class="dialog">
         <div class="dialog-content">
-            <h2 data-i18n="leaderboard.title">Leaderboard</h2>
+            <h2>Leaderboard</h2>
             <div id="leaderboard-list"></div>
             <div class="dialog-buttons">
-                <button id="close-leaderboard-btn" data-i18n="leaderboard.close">Zatvori</button>
+                <button id="close-leaderboard-btn">Zatvori</button>
             </div>
         </div>
     </div>
@@ -214,11 +257,11 @@
     <!-- Dijalog za potvrdu reseta -->
     <div id="confirm-reset-dialog" class="dialog">
         <div class="dialog-content">
-            <h2 data-i18n="confirmReset.title">Resetiraj Igru</h2>
-            <p data-i18n="confirmReset.message">Jeste li sigurni da želite resetirati igru?</p>
+            <h2>Resetiraj Igru</h2>
+            <p>Jeste li sigurni da želite resetirati igru?</p>
             <div class="dialog-buttons">
-                <button id="confirm-reset-btn" class="dialog-btn" data-i18n="confirmReset.yes">Da</button>
-                <button id="cancel-reset-btn" class="dialog-btn secondary" data-i18n="confirmReset.no">Ne</button>
+                <button id="confirm-reset-btn" class="dialog-btn">Da</button>
+                <button id="cancel-reset-btn" class="dialog-btn secondary">Ne</button>
             </div>
         </div>
     </div>
@@ -228,7 +271,7 @@
         <div class="dialog-content">
             <p id="info-message"></p>
             <div class="dialog-buttons">
-                <button id="close-info-btn" class="dialog-btn" data-i18n="infoDialog.ok">OK</button>
+                <button id="close-info-btn" class="dialog-btn">OK</button>
             </div>
         </div>
     </div>
@@ -236,10 +279,10 @@
     <!-- Dijalog za pravila -->
     <div id="rules-dialog" class="dialog">
         <div class="dialog-content">
-            <h2 data-i18n="rules.title">Pravila</h2>
-            <p style="font-size: 18px; margin: 20px 0;" data-i18n="rules.content">Priča je jednostavna, majmune.</p>
+            <h2>Pravila</h2>
+            <p style="font-size: 18px; margin: 20px 0;">Priča je jednostavna, majmune.</p>
             <div class="dialog-buttons">
-                <button id="close-rules-btn" data-i18n="rules.close">Zatvori</button>
+                <button id="close-rules-btn">Zatvori</button>
             </div>
         </div>
     </div>
@@ -268,13 +311,12 @@
 
             <!-- Gumbi -->
             <div id="game-controls">
-                <button id="reset-btn" class="control-btn" data-i18n="game.resetGame">Resetiraj Igru</button>
-                <button id="back-to-menu-btn" class="control-btn secondary" data-i18n="game.mainMenu">Glavni Izbornik</button>
+                <button id="reset-btn" class="control-btn">Resetiraj Igru</button>
+                <button id="back-to-menu-btn" class="control-btn secondary">Glavni Izbornik</button>
             </div>
         </div>
     </div>
 
-    <script src="i18n.js"></script>
     <script src="script.js"></script>
     <script type="module" src="online.js"></script>
 </body>
