@@ -807,26 +807,12 @@ async function showOnlineLeaderboard() {
     if (players.length === 0) {
       listEl.textContent = 'Još nema online igrača.';
     } else {
-      listEl.innerHTML = `
-        <table class="leaderboard-table">
-          <thead>
-            <tr>
-              <th>#</th>
-              <th>Ime</th>
-              <th>Rating</th>
-              <th>W / D / L</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${players.map((p, i) => `
-              <tr class="${i < 3 ? 'top-' + (i + 1) : ''}">
-                <td class="rank-cell">${i + 1}</td>
-                <td class="name-cell">${escHtml(p.displayName)}</td>
-                <td class="rating-cell">${p.rating}</td>
-                <td class="wdl-cell">${p.wins ?? 0} / ${p.draws ?? 0} / ${p.losses ?? 0}</td>
-              </tr>`).join('')}
-          </tbody>
-        </table>`;
+      listEl.innerHTML = players
+        .map((p, i) =>
+          `<div>${i + 1}. ${escHtml(p.displayName)} — ${p.rating} `+
+          `(${p.wins ?? 0}/${p.draws ?? 0}/${p.losses ?? 0})</div>`
+        )
+        .join('');
     }
   } catch (err) {
     listEl.textContent = 'Greška: ' + err.message;
