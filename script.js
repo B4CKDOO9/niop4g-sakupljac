@@ -126,12 +126,26 @@ function showLeaderboard() {
   if (players.length === 0) {
     leaderboardList.textContent = "Nema spremljenih igrača.";
   } else {
-    leaderboardList.innerHTML = players
-      .map(
-        (player, index) =>
-          `<div>${index + 1}. ${escapeHtml(player.name)} - ${player.rating} (${player.wins}/${player.draws}/${player.losses})</div>`,
-      )
-      .join("");
+    leaderboardList.innerHTML = `
+      <table class="leaderboard-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Ime</th>
+            <th>Rating</th>
+            <th>W / D / L</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${players.map((player, index) => `
+            <tr class="${index < 3 ? 'top-' + (index + 1) : ''}">
+              <td class="rank-cell">${index + 1}</td>
+              <td class="name-cell">${escapeHtml(player.name)}</td>
+              <td class="rating-cell">${player.rating}</td>
+              <td class="wdl-cell">${player.wins} / ${player.draws} / ${player.losses}</td>
+            </tr>`).join('')}
+        </tbody>
+      </table>`;
   }
 
   leaderboardDialog.style.display = "flex";
@@ -814,24 +828,8 @@ function initThemeAndLogo() {
 
   const themeBtn = document.createElement('button');
   themeBtn.className = 'theme-toggle-btn';
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-  const themeIcon = document.createElement('img');
-  themeIcon.src = document.body.classList.contains('dark-mode') ? 'icons/brightness.png' : 'icons/moon.png';
-  themeIcon.alt = 'Toggle theme';
-  themeIcon.style.width = '24px';
-  themeIcon.style.height = '24px';
-  themeBtn.appendChild(themeIcon);
-=======
   themeBtn.id = 'theme-toggle-btn';
-=======
->>>>>>> parent of 297ae9d (Dizajner)
   themeBtn.textContent = document.body.classList.contains('dark-mode') ? '☀️ Light Mode' : '🌙 Dark Mode';
->>>>>>> 297ae9d7d3c1a9e4104c380be712cbdc48e4fa95
-=======
-  themeBtn.textContent = document.body.classList.contains('dark-mode') ? '☀️ Light Mode' : '🌙 Dark Mode';
->>>>>>> parent of f3907aa (i18n added)
   themeBtn.onclick = () => {
     document.body.classList.toggle('dark-mode');
     const isDark = document.body.classList.contains('dark-mode');
