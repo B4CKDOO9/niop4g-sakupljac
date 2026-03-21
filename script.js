@@ -390,6 +390,11 @@ function updateStatus() {
   }
 
   document.getElementById("status").style.color = color;
+
+  const p1display = document.getElementById("player1-display");
+  const p2display = document.getElementById("player2-display");
+  if (p1display) p1display.style.color = "#dc3545";
+  if (p2display) p2display.style.color = "#007bff";
 }
 
 function updateScore() {
